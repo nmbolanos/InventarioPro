@@ -7,6 +7,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Rutas
+const productoRoutes = require('./routes/productoRoutes');
+
+app.use('/api/productos', productoRoutes);
+
 // Ruta principal
 app.get("/", (req, res) => {
     res.send("API Inventario funcionando");
@@ -30,8 +35,10 @@ app.get("/probar-db", async (req, res) => {
     }
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+const swaggerDocs = require('./config/swagger');
 
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
+    swaggerDocs(app, PORT);
 });

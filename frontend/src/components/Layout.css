@@ -1,0 +1,75 @@
+.layout-container {
+    display: flex;
+    min-height: 100vh;
+    background-color: var(--bg-color);
+}
+
+.sidebar {
+    width: 250px;
+    background-color: var(--surface-color);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-sm);
+    z-index: 10;
+}
+
+.sidebar-header {
+    padding: 24px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-header h2 {
+    margin: 0;
+    color: var(--primary-color);
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.sidebar-header h2 span {
+    color: var(--secondary-color);
+}
+
+.sidebar-nav {
+    flex: 1;
+    padding: 20px 0;
+}
+
+.sidebar-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.nav-link {
+    display: block;
+    padding: 12px 24px;
+    color: var(--text-primary);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+}
+
+.nav-link:hover:not(.disabled) {
+    background-color: rgba(0, 180, 216, 0.05);
+    color: var(--primary-hover);
+}
+
+.nav-link.active {
+    background-color: rgba(0, 180, 216, 0.1);
+    color: var(--primary-hover);
+    border-left-color: var(--primary-color);
+}
+
+.nav-link.disabled {
+    color: var(--text-secondary);
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.main-content {
+    flex: 1;
+    overflow-y: auto;
+    /* El padding se maneja dentro de cada página específica como .productos-page-container */
+}
