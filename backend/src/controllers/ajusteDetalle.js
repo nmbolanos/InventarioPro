@@ -1,6 +1,6 @@
 const AjusteDetalle = require('../models/ajusteDetalle');
 const AjusteCabecera = require('../models/ajusteCabecera');
-const Producto = require('../models/producto');
+const Producto = require('../models/Producto'); // Importamos el Producto del HU1
 
 const ajusteDetalleController = {
     // Obtener todos los detalles de ajuste
@@ -19,7 +19,7 @@ const ajusteDetalleController = {
     // Obtener un detalle por ID
     obtenerPorId: async (req, res) => {
         try {
-            const { id } = req.params;
+            const { id } = req.params; // id representa id_detalle
             const detalle = await AjusteDetalle.obtenerPorId(id);
             if (!detalle) {
                 return res.status(404).json({ mensaje: 'Detalle de ajuste no encontrado' });
@@ -33,11 +33,11 @@ const ajusteDetalleController = {
         }
     },
 
-    // Obtener todos los detalles de una cabecera específica
+    // Obtener todos los detalles de una cabecera específica (por numero_ajuste)
     obtenerPorCabeceraId: async (req, res) => {
         try {
-            const { cabeceraId } = req.params;
-
+            const { cabeceraId } = req.params; // cabeceraId representa numero_ajuste (ej: AJUS-0001)
+            
             // Verificar si la cabecera existe
             const cabecera = await AjusteCabecera.obtenerPorId(cabeceraId);
             if (!cabecera) {
@@ -57,11 +57,11 @@ const ajusteDetalleController = {
     // Crear un nuevo detalle de ajuste (valida stock y actualiza automáticamente)
     crear: async (req, res) => {
         try {
-            const { ajuste_cabecera_id, producto_id, cantidad } = req.body;
+            const { numero_ajuste, codigo_producto, cantidad } = req.body;
 
             // Validaciones básicas
-            if (!ajuste_cabecera_id || !producto_id || cantidad === undefined) {
-                return res.status(400).json({ mensaje: 'Los campos ajuste_cabecera_id, producto_id y cantidad son obligatorios.' });
+            if (!numero_ajuste || !codigo_producto || cantidad === undefined) {
+                return res.status(400).json({ mensaje: 'Los campos numero_ajuste, codigo_producto y cantidad son obligatorios.' });
             }
 
             const parsedCantidad = parseInt(cantidad, 10);
@@ -70,27 +70,26 @@ const ajusteDetalleController = {
             }
 
             // Verificar que la cabecera existe
-            const cabecera = await AjusteCabecera.obtenerPorId(ajuste_cabecera_id);
+            const cabecera = await AjusteCabecera.obtenerPorId(numero_ajuste);
             if (!cabecera) {
-                return res.status(404).json({ mensaje: `La cabecera de ajuste con ID ${ajuste_cabecera_id} no existe.` });
+                return res.status(404).json({ mensaje: `La cabecera de ajuste ${numero_ajuste} no existe.` });
             }
 
             // Verificar que el producto existe
-            const producto = await Producto.obtenerPorId(producto_id);
+            const producto = await Producto.getByCodigo(codigo_producto);
             if (!producto) {
-                return res.status(404).json({ mensaje: `El producto con ID ${producto_id} no existe.` });
+                return res.status(404).json({ mensaje: `El producto con código ${codigo_producto} no existe.` });
             }
 
-            // Crear el detalle (dentro de la transacción validará el stock)
+            // Crear el detalle (dentro de la transacción se validará y actualizará el stock)
             const nuevoDetalle = await AjusteDetalle.crear({
-                ajuste_cabecera_id,
-                producto_id,
+                numero_ajuste,
+                codigo_producto,
                 cantidad: parsedCantidad
             });
 
             res.status(201).json(nuevoDetalle);
         } catch (error) {
-            // Manejar errores de stock insuficiente u otros
             res.status(400).json({
                 mensaje: 'No se pudo registrar el detalle de ajuste',
                 error: error.message
@@ -98,15 +97,15 @@ const ajusteDetalleController = {
         }
     },
 
-    // Actualizar un detalle de ajuste (valida stock y actualiza dinámicamente)
+    // Actualizar un detalle de ajuste
     actualizar: async (req, res) => {
         try {
-            const { id } = req.params;
-            const { producto_id, cantidad } = req.body;
+            const { id } = req.params; // id representa id_detalle
+            const { codigo_producto, cantidad } = req.body;
 
             // Validaciones básicas
-            if (!producto_id || cantidad === undefined) {
-                return res.status(400).json({ mensaje: 'Los campos producto_id y cantidad son obligatorios.' });
+            if (!codigo_producto || cantidad === undefined) {
+                return res.status(400).json({ mensaje: 'Los campos codigo_producto y cantidad son obligatorios.' });
             }
 
             const parsedCantidad = parseInt(cantidad, 10);
@@ -121,13 +120,13 @@ const ajusteDetalleController = {
             }
 
             // Verificar si el nuevo producto existe
-            const producto = await Producto.obtenerPorId(producto_id);
+            const producto = await Producto.getByCodigo(codigo_producto);
             if (!producto) {
-                return res.status(404).json({ mensaje: `El producto con ID ${producto_id} no existe.` });
+                return res.status(404).json({ mensaje: `El producto con código ${codigo_producto} no existe.` });
             }
 
             const detalleActualizado = await AjusteDetalle.actualizar(id, {
-                producto_id,
+                codigo_producto,
                 cantidad: parsedCantidad
             });
 
@@ -143,7 +142,7 @@ const ajusteDetalleController = {
     // Eliminar un detalle de ajuste (revierte el stock del producto)
     eliminar: async (req, res) => {
         try {
-            const { id } = req.params;
+            const { id } = req.params; // id representa id_detalle
 
             // Verificar si existe el detalle
             const detalleExistente = await AjusteDetalle.obtenerPorId(id);

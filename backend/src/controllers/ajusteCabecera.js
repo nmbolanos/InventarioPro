@@ -15,10 +15,10 @@ const ajusteCabeceraController = {
         }
     },
 
-    // Obtener cabecera por ID (incluyendo sus detalles)
+    // Obtener cabecera por número de ajuste (incluyendo sus detalles)
     obtenerPorId: async (req, res) => {
         try {
-            const { id } = req.params;
+            const { id } = req.params; // id representa numero_ajuste (ej: AJUS-0001)
             const cabecera = await AjusteCabecera.obtenerPorId(id);
             
             if (!cabecera) {
@@ -43,17 +43,17 @@ const ajusteCabeceraController = {
     // Crear una nueva cabecera de ajuste
     crear: async (req, res) => {
         try {
-            const { motivo, observacion, fecha } = req.body;
+            const { descripcion, fecha, impreso } = req.body;
 
             // Validación básica
-            if (!motivo) {
-                return res.status(400).json({ mensaje: 'El motivo del ajuste es obligatorio.' });
+            if (!descripcion) {
+                return res.status(400).json({ mensaje: 'La descripción del ajuste es obligatoria.' });
             }
 
             const nuevaCabecera = await AjusteCabecera.crear({
-                motivo,
-                observacion,
-                fecha
+                descripcion,
+                fecha,
+                impreso
             });
 
             res.status(201).json(nuevaCabecera);
@@ -68,12 +68,12 @@ const ajusteCabeceraController = {
     // Actualizar una cabecera de ajuste
     actualizar: async (req, res) => {
         try {
-            const { id } = req.params;
-            const { motivo, observacion, fecha } = req.body;
+            const { id } = req.params; // id representa numero_ajuste
+            const { descripcion, fecha, impreso } = req.body;
 
             // Validación básica
-            if (!motivo) {
-                return res.status(400).json({ mensaje: 'El motivo del ajuste es obligatorio.' });
+            if (!descripcion) {
+                return res.status(400).json({ mensaje: 'La descripción del ajuste es obligatoria.' });
             }
 
             // Verificar si existe la cabecera
@@ -82,13 +82,10 @@ const ajusteCabeceraController = {
                 return res.status(404).json({ mensaje: 'Cabecera de ajuste no encontrada' });
             }
 
-            // Si no viene fecha, mantener la que tenía
-            const fechaAjuste = fecha || cabeceraExistente.fecha;
-
             const cabeceraActualizada = await AjusteCabecera.actualizar(id, {
-                motivo,
-                observacion,
-                fecha: fechaAjuste
+                descripcion,
+                fecha: fecha || cabeceraExistente.fecha,
+                impreso: impreso !== undefined ? impreso : cabeceraExistente.impreso
             });
 
             res.json(cabeceraActualizada);
@@ -103,7 +100,7 @@ const ajusteCabeceraController = {
     // Eliminar una cabecera de ajuste (revertirá el stock de sus detalles automáticamente)
     eliminar: async (req, res) => {
         try {
-            const { id } = req.params;
+            const { id } = req.params; // id representa numero_ajuste
             
             // Verificar si existe la cabecera
             const cabeceraExistente = await AjusteCabecera.obtenerPorId(id);

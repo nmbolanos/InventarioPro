@@ -3,102 +3,86 @@ const pool = require('../config/db');
 const AjusteCabecera = {
     // Obtener todas las cabeceras de ajuste
     obtenerTodos: async () => {
-        const query = 'SELECT * FROM ajuste_cabecera ORDER BY id DESC';
+        const query = 'SELECT * FROM ajuste_cabecera ORDER BY fecha DESC';
         const { rows } = await pool.query(query);
         return rows;
     },
 
-    // Obtener una cabecera por ID, incluyendo sus detalles
-    obtenerPorId: async (id) => {
-        const query = 'SELECT * FROM ajuste_cabecera WHERE id = $1';
-        const { rows } = await pool.query(query, [id]);
+    // Obtener una cabecera por numero_ajuste
+    obtenerPorId: async (numero_ajuste) => {
+        const query = 'SELECT * FROM ajuste_cabecera WHERE numero_ajuste = $1';
+        const { rows } = await pool.query(query, [numero_ajuste]);
         return rows[0];
-    },
-
-    // Generar el siguiente número de ajuste correlativo (ej. AJUS-0001)
-    generarSiguienteNumero: async (client) => {
-        const queryExecutor = client || pool;
-        const query = 'SELECT numero_ajuste FROM ajuste_cabecera ORDER BY id DESC LIMIT 1';
-        const { rows } = await queryExecutor.query(query);
-        
-        let nextNum = 1;
-        if (rows.length > 0) {
-            const ultimoNumero = rows[0].numero_ajuste;
-            const match = ultimoNumero.match(/AJUS-(\d+)/);
-            if (match) {
-                nextNum = parseInt(match[1], 10) + 1;
-            }
-        }
-        return `AJUS-${String(nextNum).padStart(4, '0')}`;
     },
 
     // Crear una cabecera de ajuste
-    crear: async (datos, client) => {
-        const queryExecutor = client || pool;
-        const { motivo, observacion, fecha } = datos;
+    crear: async (datos) => {
+        const { descripcion, fecha, impreso } = datos;
         
-        // Si no viene fecha, por defecto es hoy
-        const fechaAjuste = fecha || new Date().toISOString().split('T')[0];
-        
-        // Generar número de ajuste secuencial
-        const numero_ajuste = await AjusteCabecera.generarSiguienteNumero(queryExecutor);
+        // Si no viene fecha, por defecto es hoy/ahora
+        const fechaAjuste = fecha || new Date().toISOString();
+        const estaImpreso = impreso !== undefined ? impreso : false;
 
+        // El número de ajuste se genera automáticamente mediante el disparador (trigger) en la BD
         const query = `
-            INSERT INTO ajuste_cabecera (numero_ajuste, fecha, motivo, observacion)
-            VALUES ($1, $2, $3, $4)
-            RETURNING *
-        `;
-        const { rows } = await queryExecutor.query(query, [
-            numero_ajuste,
-            fechaAjuste,
-            motivo,
-            observacion || null
-        ]);
-        return rows[0];
-    },
-
-    // Actualizar una cabecera de ajuste (solo motivo, observacion, fecha)
-    actualizar: async (id, datos) => {
-        const { motivo, observacion, fecha } = datos;
-        const query = `
-            UPDATE ajuste_cabecera
-            SET motivo = $1, observacion = $2, fecha = $3, actualizado_en = CURRENT_TIMESTAMP
-            WHERE id = $4
+            INSERT INTO ajuste_cabecera (descripcion, fecha, impreso)
+            VALUES ($1, $2, $3)
             RETURNING *
         `;
         const { rows } = await pool.query(query, [
-            motivo,
-            observacion,
-            fecha,
-            id
+            descripcion,
+            fechaAjuste,
+            estaImpreso
         ]);
         return rows[0];
     },
 
-    // Eliminar una cabecera de ajuste
-    // Al eliminar la cabecera, se deben revertir los stocks de todos los detalles asociados
-    // antes de eliminarlos físicamente (cascada). Se usa transacción obligatoria.
-    eliminar: async (id) => {
+    // Actualizar una cabecera de ajuste (descripcion, fecha, impreso)
+    actualizar: async (numero_ajuste, datos) => {
+        const { descripcion, fecha, impreso } = datos;
+        const query = `
+            UPDATE ajuste_cabecera
+            SET descripcion = $1, fecha = $2, impreso = $3
+            WHERE numero_ajuste = $4
+            RETURNING *
+        `;
+        const { rows } = await pool.query(query, [
+            descripcion,
+            fecha,
+            impreso,
+            numero_ajuste
+        ]);
+        return rows[0];
+    },
+
+    // Eliminar una cabecera de ajuste y revertir stocks correspondientes
+    eliminar: async (numero_ajuste) => {
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
 
             // 1. Obtener todos los detalles asociados para poder revertir stock
-            const queryDetalles = 'SELECT producto_id, cantidad FROM ajuste_detalle WHERE ajuste_cabecera_id = $1';
-            const { rows: detalles } = await client.query(queryDetalles, [id]);
+            const queryDetalles = 'SELECT codigo_producto, cantidad FROM ajuste_detalle WHERE numero_ajuste = $1';
+            const { rows: detalles } = await client.query(queryDetalles, [numero_ajuste]);
 
             // 2. Revertir el stock para cada detalle
-            const Producto = require('./producto');
             for (const detalle of detalles) {
-                // Al eliminar el ajuste, revertimos la acción.
-                // Si la cantidad era positiva (+10), al eliminar restamos 10.
-                // Si la cantidad era negativa (-5), al eliminar sumamos 5 (revertir restando la cantidad original: stock - cantidad).
-                await Producto.actualizarStockConTransaccion(client, detalle.producto_id, -detalle.cantidad);
+                // Al eliminar, restamos la cantidad original de ajuste (revertir)
+                const selectProduct = 'SELECT stock_actual, nombre FROM producto WHERE codigo = $1 FOR UPDATE';
+                const productRes = await client.query(selectProduct, [detalle.codigo_producto]);
+                if (productRes.rows.length > 0) {
+                    const prod = productRes.rows[0];
+                    const nuevoStock = prod.stock_actual - detalle.cantidad;
+                    if (nuevoStock < 0) {
+                        throw new Error(`No se puede eliminar el ajuste porque el stock de "${prod.nombre}" quedaría en negativo (${nuevoStock}).`);
+                    }
+                    await client.query('UPDATE producto SET stock_actual = $1 WHERE codigo = $2', [nuevoStock, detalle.codigo_producto]);
+                }
             }
 
-            // 3. Eliminar la cabecera de ajuste (los detalles se eliminarán automáticamente por ON DELETE CASCADE)
-            const queryDelete = 'DELETE FROM ajuste_cabecera WHERE id = $1 RETURNING *';
-            const { rows: deletedRows } = await client.query(queryDelete, [id]);
+            // 3. Eliminar la cabecera (los detalles se borrarán automáticamente debido a ON DELETE CASCADE)
+            const queryDelete = 'DELETE FROM ajuste_cabecera WHERE numero_ajuste = $1 RETURNING *';
+            const { rows: deletedRows } = await client.query(queryDelete, [numero_ajuste]);
 
             await client.query('COMMIT');
             return deletedRows[0];

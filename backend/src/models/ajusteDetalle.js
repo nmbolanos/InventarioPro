@@ -1,63 +1,81 @@
 const pool = require('../config/db');
-const Producto = require('./producto');
 
 const AjusteDetalle = {
-    // Obtener todos los detalles
+    // Obtener todos los detalles de ajuste
     obtenerTodos: async () => {
         const query = `
-            SELECT ad.*, p.codigo as producto_codigo, p.nombre as producto_nombre 
+            SELECT ad.*, p.nombre as producto_nombre 
             FROM ajuste_detalle ad
-            JOIN productos p ON ad.producto_id = p.id
-            ORDER BY ad.id ASC
+            JOIN producto p ON ad.codigo_producto = p.codigo
+            ORDER BY ad.id_detalle ASC
         `;
         const { rows } = await pool.query(query);
         return rows;
     },
 
-    // Obtener detalle por ID
-    obtenerPorId: async (id) => {
+    // Obtener un detalle por ID
+    obtenerPorId: async (id_detalle) => {
         const query = `
-            SELECT ad.*, p.codigo as producto_codigo, p.nombre as producto_nombre 
+            SELECT ad.*, p.nombre as producto_nombre 
             FROM ajuste_detalle ad
-            JOIN productos p ON ad.producto_id = p.id
-            WHERE ad.id = $1
+            JOIN producto p ON ad.codigo_producto = p.codigo
+            WHERE ad.id_detalle = $1
         `;
-        const { rows } = await pool.query(query, [id]);
+        const { rows } = await pool.query(query, [id_detalle]);
         return rows[0];
     },
 
-    // Obtener todos los detalles por Cabecera ID
-    obtenerPorCabeceraId: async (cabeceraId) => {
+    // Obtener todos los detalles por número de ajuste
+    obtenerPorCabeceraId: async (numero_ajuste) => {
         const query = `
-            SELECT ad.*, p.codigo as producto_codigo, p.nombre as producto_nombre 
+            SELECT ad.*, p.nombre as producto_nombre 
             FROM ajuste_detalle ad
-            JOIN productos p ON ad.producto_id = p.id
-            WHERE ad.ajuste_cabecera_id = $1
-            ORDER BY ad.id ASC
+            JOIN producto p ON ad.codigo_producto = p.codigo
+            WHERE ad.numero_ajuste = $1
+            ORDER BY ad.id_detalle ASC
         `;
-        const { rows } = await pool.query(query, [cabeceraId]);
+        const { rows } = await pool.query(query, [numero_ajuste]);
         return rows;
     },
 
-    // Crear un detalle (afecta stock automáticamente)
+    // Auxiliar para actualizar stock del producto de forma segura dentro de una transacción
+    actualizarStockInterno: async (client, codigo_producto, cantidad) => {
+        const selectQuery = 'SELECT stock_actual, nombre FROM producto WHERE codigo = $1 FOR UPDATE';
+        const { rows } = await client.query(selectQuery, [codigo_producto]);
+        
+        if (rows.length === 0) {
+            throw new Error(`Producto con código ${codigo_producto} no encontrado.`);
+        }
+
+        const prod = rows[0];
+        const nuevoStock = prod.stock_actual + cantidad;
+
+        if (nuevoStock < 0) {
+            throw new Error(`Stock insuficiente para el producto "${prod.nombre}". Stock actual: ${prod.stock_actual}, ajuste solicitado: ${cantidad}`);
+        }
+
+        const updateQuery = 'UPDATE producto SET stock_actual = $1 WHERE codigo = $2';
+        await client.query(updateQuery, [nuevoStock, codigo_producto]);
+    },
+
+    // Crear un detalle y actualizar stock
     crear: async (datos) => {
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
 
-            const { ajuste_cabecera_id, producto_id, cantidad } = datos;
+            const { numero_ajuste, codigo_producto, cantidad } = datos;
 
-            // 1. Validar y actualizar stock del producto
-            // Suma la cantidad (que puede ser positiva o negativa) al stock actual
-            await Producto.actualizarStockConTransaccion(client, producto_id, cantidad);
+            // 1. Validar e impactar stock
+            await AjusteDetalle.actualizarStockInterno(client, codigo_producto, cantidad);
 
-            // 2. Insertar el detalle
+            // 2. Insertar detalle
             const query = `
-                INSERT INTO ajuste_detalle (ajuste_cabecera_id, producto_id, cantidad)
+                INSERT INTO ajuste_detalle (numero_ajuste, codigo_producto, cantidad)
                 VALUES ($1, $2, $3)
                 RETURNING *
             `;
-            const { rows } = await client.query(query, [ajuste_cabecera_id, producto_id, cantidad]);
+            const { rows } = await client.query(query, [numero_ajuste, codigo_producto, cantidad]);
 
             await client.query('COMMIT');
             return rows[0];
@@ -70,49 +88,45 @@ const AjusteDetalle = {
     },
 
     // Actualizar un detalle (recalcula y actualiza stock automáticamente)
-    actualizar: async (id, datos) => {
+    actualizar: async (id_detalle, datos) => {
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
 
-            const { producto_id: nuevoProductoId, cantidad: nuevaCantidad } = datos;
+            const { codigo_producto: nuevoCodigo, cantidad: nuevaCantidad } = datos;
 
-            // 1. Obtener el detalle actual para comparar
-            const selectDetalleQuery = 'SELECT * FROM ajuste_detalle WHERE id = $1 FOR UPDATE';
-            const selectDetalleResult = await client.query(selectDetalleQuery, [id]);
-            
-            if (selectDetalleResult.rows.length === 0) {
-                throw new Error(`Detalle de ajuste con ID ${id} no encontrado.`);
+            // 1. Obtener detalle actual
+            const selectDetalle = 'SELECT * FROM ajuste_detalle WHERE id_detalle = $1 FOR UPDATE';
+            const detailRes = await client.query(selectDetalle, [id_detalle]);
+            if (detailRes.rows.length === 0) {
+                throw new Error(`Detalle de ajuste con ID ${id_detalle} no encontrado.`);
             }
 
-            const detalleAnterior = selectDetalleResult.rows[0];
-            const anteriorProductoId = detalleAnterior.producto_id;
-            const anteriorCantidad = detalleAnterior.cantidad;
+            const detAnterior = detailRes.rows[0];
+            const anteriorCodigo = detAnterior.codigo_producto;
+            const anteriorCantidad = detAnterior.cantidad;
 
             // 2. Ajustar stocks
-            if (anteriorProductoId === nuevoProductoId) {
-                // Mismo producto: la diferencia neta que debemos aplicar es: nuevaCantidad - anteriorCantidad
+            if (anteriorCodigo === nuevoCodigo) {
                 const diferencia = nuevaCantidad - anteriorCantidad;
                 if (diferencia !== 0) {
-                    await Producto.actualizarStockConTransaccion(client, nuevoProductoId, diferencia);
+                    await AjusteDetalle.actualizarStockInterno(client, nuevoCodigo, diferencia);
                 }
             } else {
-                // Diferente producto:
-                // a) Revertir el stock del producto anterior (restar la cantidad anterior del stock, es decir, sumarle -anteriorCantidad)
-                await Producto.actualizarStockConTransaccion(client, anteriorProductoId, -anteriorCantidad);
-
-                // b) Aplicar la nueva cantidad al nuevo producto
-                await Producto.actualizarStockConTransaccion(client, nuevoProductoId, nuevaCantidad);
+                // Revertir del producto anterior
+                await AjusteDetalle.actualizarStockInterno(client, anteriorCodigo, -anteriorCantidad);
+                // Aplicar al nuevo producto
+                await AjusteDetalle.actualizarStockInterno(client, nuevoCodigo, nuevaCantidad);
             }
 
-            // 3. Actualizar la fila en ajuste_detalle
+            // 3. Actualizar fila
             const query = `
                 UPDATE ajuste_detalle
-                SET producto_id = $1, cantidad = $2, actualizado_en = CURRENT_TIMESTAMP
-                WHERE id = $3
+                SET codigo_producto = $1, cantidad = $2
+                WHERE id_detalle = $3
                 RETURNING *
             `;
-            const { rows } = await client.query(query, [nuevoProductoId, nuevaCantidad, id]);
+            const { rows } = await client.query(query, [nuevoCodigo, nuevaCantidad, id_detalle]);
 
             await client.query('COMMIT');
             return rows[0];
@@ -124,31 +138,26 @@ const AjusteDetalle = {
         }
     },
 
-    // Eliminar un detalle (reconvierte el stock al estado original)
-    eliminar: async (id) => {
+    // Eliminar un detalle y revertir stock
+    eliminar: async (id_detalle) => {
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
 
-            // 1. Obtener el detalle para saber qué revertir
-            const selectDetalleQuery = 'SELECT * FROM ajuste_detalle WHERE id = $1 FOR UPDATE';
-            const selectDetalleResult = await client.query(selectDetalleQuery, [id]);
-            
-            if (selectDetalleResult.rows.length === 0) {
-                throw new Error(`Detalle de ajuste con ID ${id} no encontrado.`);
+            const selectDetalle = 'SELECT * FROM ajuste_detalle WHERE id_detalle = $1 FOR UPDATE';
+            const detailRes = await client.query(selectDetalle, [id_detalle]);
+            if (detailRes.rows.length === 0) {
+                throw new Error(`Detalle de ajuste con ID ${id_detalle} no encontrado.`);
             }
 
-            const detalle = selectDetalleResult.rows[0];
+            const detalle = detailRes.rows[0];
 
-            // 2. Revertir el stock (restar la cantidad que fue ajustada)
-            // Si sumamos 10 en el ajuste, revertir implica restar 10.
-            // Si restamos 5 en el ajuste, revertir implica sumar 5.
-            // Por ende, el cambio de stock es -cantidad.
-            await Producto.actualizarStockConTransaccion(client, detalle.producto_id, -detalle.cantidad);
+            // Revertir stock (restar la cantidad aplicada)
+            await AjusteDetalle.actualizarStockInterno(client, detalle.codigo_producto, -detalle.cantidad);
 
-            // 3. Eliminar el detalle
-            const queryDelete = 'DELETE FROM ajuste_detalle WHERE id = $1 RETURNING *';
-            const { rows } = await client.query(queryDelete, [id]);
+            // Eliminar fila
+            const queryDelete = 'DELETE FROM ajuste_detalle WHERE id_detalle = $1 RETURNING *';
+            const { rows } = await client.query(queryDelete, [id_detalle]);
 
             await client.query('COMMIT');
             return rows[0];
