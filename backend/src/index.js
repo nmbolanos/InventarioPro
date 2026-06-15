@@ -2,10 +2,20 @@ const express = require("express");
 const cors = require("cors");
 const pool = require("./config/db");
 
+// Importar rutas
+const productoRoutes = require("./routes/producto");
+const ajusteCabeceraRoutes = require("./routes/ajusteCabecera");
+const ajusteDetalleRoutes = require("./routes/ajusteDetalle");
+
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Montar rutas de la API
+app.use("/api/productos", productoRoutes);
+app.use("/api/ajustes/cabecera", ajusteCabeceraRoutes);
+app.use("/api/ajustes/detalle", ajusteDetalleRoutes);
 
 // Ruta principal
 app.get("/", (req, res) => {
@@ -34,4 +44,4 @@ const PORT = 3000;
 
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
-});
+});
