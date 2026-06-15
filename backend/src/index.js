@@ -12,11 +12,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Montar rutas de la API
-app.use("/api/productos", productoRoutes);
-app.use("/api/ajustes/cabecera", ajusteCabeceraRoutes);
-app.use("/api/ajustes/detalle", ajusteDetalleRoutes);
-
 // Ruta principal
 app.get("/", (req, res) => {
     res.send("API Inventario funcionando");
@@ -40,8 +35,10 @@ app.get("/probar-db", async (req, res) => {
     }
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+const swaggerDocs = require('./config/swagger');
 
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
-});
+    swaggerDocs(app, PORT);
+});
