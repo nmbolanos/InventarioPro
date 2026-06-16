@@ -7,6 +7,11 @@ export const getAjustesCabecera = async () => {
     return response.data;
 };
 
+export const getAjusteCabeceraActual = async () => {
+    const response = await axios.get(`${API_BASE_URL}/ajustes/cabecera/actual`);
+    return response.data;
+};
+
 export const getAjusteCabeceraPorId = async (id) => {
     const response = await axios.get(`${API_BASE_URL}/ajustes/cabecera/${id}`);
     return response.data;
@@ -22,6 +27,13 @@ export const crearAjusteDetalle = async (detalle) => {
     // Detalle format: { numero_ajuste, codigo_producto, cantidad }
     const response = await axios.post(`${API_BASE_URL}/ajustes/detalle`, detalle);
     return response.data;
+};
+
+export const imprimirAjuste = async (numeroAjuste) => {
+    const response = await axios.post(`${API_BASE_URL}/ajustes/cabecera/${numeroAjuste}/imprimir`, {}, {
+        responseType: 'blob'
+    });
+    return response;
 };
 
 export const getProductosCatalogo = async () => {

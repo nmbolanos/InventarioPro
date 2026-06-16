@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 const ProductoForm = ({ producto, onSave, onCancel }) => {
     const [formData, setFormData] = useState({
@@ -15,6 +15,7 @@ const ProductoForm = ({ producto, onSave, onCancel }) => {
 
     useEffect(() => {
         if (producto) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setFormData({
                 codigo: producto.codigo || '',
                 nombre: producto.nombre || '',
@@ -69,8 +70,9 @@ const ProductoForm = ({ producto, onSave, onCancel }) => {
                 costo: Number(formData.costo),
                 pvp: Number(formData.pvp)
             });
-        } catch (error) {
-            // Error manejado por el padre (backend error), podríamos mostrar errores de campos si vienen estructurados
+        } catch (err) {
+            // Error manejado por el padre (backend error)
+            console.error(err);
         } finally {
             setIsSubmitting(false);
         }

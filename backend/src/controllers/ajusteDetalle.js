@@ -1,6 +1,6 @@
 const AjusteDetalle = require('../models/ajusteDetalle');
 const AjusteCabecera = require('../models/ajusteCabecera');
-const Producto = require('../models/Producto'); // Importamos el Producto del HU1
+const Producto = require('../models/producto'); // Importamos el Producto del HU1 (ruta en minúsculas para Linux)
 
 const ajusteDetalleController = {
     // Obtener todos los detalles de ajuste
