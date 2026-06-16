@@ -9,6 +9,8 @@ const ProductosPage = () => {
     const [productos, setProductos] = useState([]);
     const [mensaje, setMensaje] = useState({ texto: '', tipo: '' }); // tipo: 'exito' | 'error'
     const [productoADesactivar, setProductoADesactivar] = useState(null); // Estado para el modal
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterStatus, setFilterStatus] = useState('Todos'); // 'Todos', 'Activo', 'Inactivo'
 
     const mostrarMensaje = (texto, tipo) => {
         setMensaje({ texto, tipo });
@@ -63,6 +65,14 @@ const ProductosPage = () => {
         setProductoADesactivar(null);
     };
 
+    const productosFiltrados = productos.filter(prod => {
+        const matchesSearch = prod.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                              prod.codigo.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        if (filterStatus === 'Todos') return matchesSearch;
+        return matchesSearch && prod.estado === filterStatus;
+    });
+
     return (
         <div className="productos-page-container">
             <header className="page-header">
@@ -79,8 +89,39 @@ const ProductosPage = () => {
             )}
 
             <div className="page-content">
+                <div className="filtros-container card">
+                    <div className="search-box">
+                        <input 
+                            type="text" 
+                            placeholder="Buscar por código o nombre..." 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <div className="filter-tabs">
+                        <button 
+                            className={`filter-tab ${filterStatus === 'Todos' ? 'active' : ''}`}
+                            onClick={() => setFilterStatus('Todos')}
+                        >
+                            Todos
+                        </button>
+                        <button 
+                            className={`filter-tab ${filterStatus === 'Activo' ? 'active' : ''}`}
+                            onClick={() => setFilterStatus('Activo')}
+                        >
+                            Activos
+                        </button>
+                        <button 
+                            className={`filter-tab ${filterStatus === 'Inactivo' ? 'active' : ''}`}
+                            onClick={() => setFilterStatus('Inactivo')}
+                        >
+                            Inactivos
+                        </button>
+                    </div>
+                </div>
+
                 <ProductoList 
-                    productos={productos} 
+                    productos={productosFiltrados} 
                     onEdit={handleEditar} 
                     onDesactivar={handleSolicitarDesactivacion} 
                 />
