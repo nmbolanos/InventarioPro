@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import ProductosPage from './pages/ProductosPage';
 import ProductoFormPage from './pages/ProductoFormPage';
+import AjusteProductosPage from './pages/AjusteProductosPage';
 
 function App() {
   return (
@@ -14,7 +15,7 @@ function App() {
           <Route path="productos" element={<ProductosPage />} />
           <Route path="productos/nuevo" element={<ProductoFormPage />} />
           <Route path="productos/editar/:codigo" element={<ProductoFormPage />} />
-          {/* Aquí se agregarán más rutas luego como path="ajustes" etc. */}
+          <Route path="ajustes" element={<AjusteProductosPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -21,7 +21,11 @@ const Layout = () => {
                                 Administración de Productos
                             </NavLink>
                         </li>
-                        {/* Aquí se agregarán las rutas para los demás módulos en el futuro */}
+                        <li>
+                            <NavLink to="/ajustes" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                                Ajuste de Productos
+                            </NavLink>
+                        </li>
                     </ul>
                 </nav>
             </aside>
