@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const pool = require("./config/db");
+const reportesRoutes = require('./routes/reportes');
 
 const app = express();
 
@@ -42,3 +43,5 @@ app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
     swaggerDocs(app, PORT);
 });
+
+app.use('/api/reportes', reportesRoutes);
