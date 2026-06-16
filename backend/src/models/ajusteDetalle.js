@@ -1,10 +1,23 @@
 const pool = require('../config/db');
 
+const bloquearSiImpreso = async (client, numeroAjuste) => {
+    const query = 'SELECT impreso FROM ajuste_cabecera WHERE numero_ajuste = $1 FOR UPDATE';
+    const { rows } = await client.query(query, [numeroAjuste]);
+
+    if (rows.length === 0) {
+        throw new Error(`Cabecera de ajuste ${numeroAjuste} no encontrada.`);
+    }
+
+    if (rows[0].impreso) {
+        throw new Error(`El ajuste ${numeroAjuste} ya fue impreso y no puede modificarse.`);
+    }
+};
+
 const AjusteDetalle = {
     // Obtener todos los detalles de ajuste
     obtenerTodos: async () => {
         const query = `
-            SELECT ad.*, p.nombre as producto_nombre 
+            SELECT ad.*, p.nombre as producto_nombre, p.stock_actual, p.pvp, p.graba_iva
             FROM ajuste_detalle ad
             JOIN producto p ON ad.codigo_producto = p.codigo
             ORDER BY ad.id_detalle ASC
@@ -16,7 +29,7 @@ const AjusteDetalle = {
     // Obtener un detalle por ID
     obtenerPorId: async (id_detalle) => {
         const query = `
-            SELECT ad.*, p.nombre as producto_nombre 
+            SELECT ad.*, p.nombre as producto_nombre, p.stock_actual, p.pvp, p.graba_iva
             FROM ajuste_detalle ad
             JOIN producto p ON ad.codigo_producto = p.codigo
             WHERE ad.id_detalle = $1
@@ -28,7 +41,7 @@ const AjusteDetalle = {
     // Obtener todos los detalles por número de ajuste
     obtenerPorCabeceraId: async (numero_ajuste) => {
         const query = `
-            SELECT ad.*, p.nombre as producto_nombre 
+            SELECT ad.*, p.nombre as producto_nombre, p.stock_actual, p.pvp, p.graba_iva
             FROM ajuste_detalle ad
             JOIN producto p ON ad.codigo_producto = p.codigo
             WHERE ad.numero_ajuste = $1
@@ -65,6 +78,8 @@ const AjusteDetalle = {
             await client.query('BEGIN');
 
             const { numero_ajuste, codigo_producto, cantidad } = datos;
+
+            await bloquearSiImpreso(client, numero_ajuste);
 
             // 1. Validar e impactar stock
             await AjusteDetalle.actualizarStockInterno(client, codigo_producto, cantidad);
@@ -103,6 +118,7 @@ const AjusteDetalle = {
             }
 
             const detAnterior = detailRes.rows[0];
+            await bloquearSiImpreso(client, detAnterior.numero_ajuste);
             const anteriorCodigo = detAnterior.codigo_producto;
             const anteriorCantidad = detAnterior.cantidad;
 
@@ -151,6 +167,7 @@ const AjusteDetalle = {
             }
 
             const detalle = detailRes.rows[0];
+            await bloquearSiImpreso(client, detalle.numero_ajuste);
 
             // Revertir stock (restar la cantidad aplicada)
             await AjusteDetalle.actualizarStockInterno(client, detalle.codigo_producto, -detalle.cantidad);

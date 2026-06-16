@@ -15,6 +15,26 @@ const AjusteCabecera = {
         return rows[0];
     },
 
+    // Obtener la cabecera de ajuste más reciente que aún no fue impresa
+    obtenerActual: async () => {
+        const query = `
+            SELECT *
+            FROM ajuste_cabecera
+            WHERE impreso = false
+            ORDER BY fecha DESC, numero_ajuste DESC
+            LIMIT 1
+        `;
+        const { rows } = await pool.query(query);
+        return rows[0];
+    },
+
+    // Verificar si una cabecera ya fue impresa
+    estaImpreso: async (numero_ajuste) => {
+        const query = 'SELECT impreso FROM ajuste_cabecera WHERE numero_ajuste = $1';
+        const { rows } = await pool.query(query, [numero_ajuste]);
+        return rows[0]?.impreso ?? false;
+    },
+
     // Crear una cabecera de ajuste
     crear: async (datos) => {
         const { descripcion, fecha, impreso } = datos;
@@ -40,6 +60,10 @@ const AjusteCabecera = {
     // Actualizar una cabecera de ajuste (descripcion, fecha, impreso)
     actualizar: async (numero_ajuste, datos) => {
         const { descripcion, fecha, impreso } = datos;
+        const estadoActual = await AjusteCabecera.obtenerPorId(numero_ajuste);
+        if (estadoActual?.impreso) {
+            throw new Error(`El ajuste ${numero_ajuste} ya fue impreso y no puede modificarse.`);
+        }
         const query = `
             UPDATE ajuste_cabecera
             SET descripcion = $1, fecha = $2, impreso = $3
@@ -60,6 +84,19 @@ const AjusteCabecera = {
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
+
+            const cabecera = await client.query(
+                'SELECT impreso FROM ajuste_cabecera WHERE numero_ajuste = $1 FOR UPDATE',
+                [numero_ajuste]
+            );
+
+            if (cabecera.rows.length === 0) {
+                throw new Error(`Cabecera de ajuste ${numero_ajuste} no encontrada.`);
+            }
+
+            if (cabecera.rows[0].impreso) {
+                throw new Error(`El ajuste ${numero_ajuste} ya fue impreso y no puede eliminarse.`);
+            }
 
             // 1. Obtener todos los detalles asociados para poder revertir stock
             const queryDetalles = 'SELECT codigo_producto, cantidad FROM ajuste_detalle WHERE numero_ajuste = $1';
