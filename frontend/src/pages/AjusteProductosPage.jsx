@@ -3,8 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { 
     getAjustesCabecera, 
     getAjusteCabeceraActual,
+    getAjusteCabeceraPorId,
     crearAjusteCabecera, 
+    actualizarAjusteCabecera,
     crearAjusteDetalle, 
+    eliminarAjusteDetalle,
     getProductosCatalogo,
     imprimirAjuste
 } from '../services/ajusteService';
@@ -12,6 +15,9 @@ import './AjusteProductosPage.css';
 
 const AjusteProductosPage = () => {
     const navigate = useNavigate();
+
+    // History State
+    const [historialAjustes, setHistorialAjustes] = useState([]);
 
     // Form states
     const [numeroAjuste, setNumeroAjuste] = useState('AJUS-0001');
@@ -32,6 +38,8 @@ const AjusteProductosPage = () => {
     const [cantidadModal, setCantidadModal] = useState('');
     const [errorModal, setErrorModal] = useState('');
     const [documentoGuardado, setDocumentoGuardado] = useState(null);
+    const [showDetallesModal, setShowDetallesModal] = useState(false);
+    const [ajusteDetallesView, setAjusteDetallesView] = useState(null);
 
     const calcularSiguienteNumero = (cabeceras) => {
         if (!cabeceras || cabeceras.length === 0) return 'AJUS-0001';
@@ -49,11 +57,49 @@ const AjusteProductosPage = () => {
         return `AJUS-${String(siguiente).padStart(4, '0')}`;
     };
 
+    const cargarAjusteEnFormularioLocally = (cabeceraCompleta) => {
+        setNumeroAjuste(cabeceraCompleta.numero_ajuste);
+        setFecha(new Date(cabeceraCompleta.fecha).toISOString().substring(0, 10));
+        setDescripcion(cabeceraCompleta.descripcion || '');
+        setDetalles((cabeceraCompleta.detalles || []).map((item) => {
+            const pvpParsed = parseFloat(item.pvp || 0);
+            const cantidadParsed = parseInt(item.cantidad || 0, 10);
+            const subtotalParsed = item.subtotal !== undefined ? parseFloat(item.subtotal) : (Math.abs(cantidadParsed) * pvpParsed);
+            return {
+                id_detalle: item.id_detalle,
+                codigo: item.codigo_producto,
+                nombre: item.producto_nombre || item.codigo_producto,
+                stock_actual: parseInt(item.stock_actual || 0, 10),
+                pvp: pvpParsed,
+                graba_iva: Boolean(item.graba_iva),
+                porcentaje_iva_aplicado: parseFloat(item.porcentaje_iva_aplicado || 0),
+                cantidad: cantidadParsed,
+                stock_resultante: parseInt(item.stock_resultante ?? (item.stock_actual ?? 0), 10) + cantidadParsed,
+                subtotal: subtotalParsed
+            };
+        }));
+        setDocumentoGuardado(cabeceraCompleta);
+        setErroresForm({});
+    };
+
+    const cargarHistorial = async () => {
+        try {
+            const cabeceras = await getAjustesCabecera();
+            const sorted = [...cabeceras].sort((a, b) => a.numero_ajuste.localeCompare(b.numero_ajuste));
+            setHistorialAjustes(sorted);
+            return cabeceras;
+        } catch (err) {
+            console.error('Error al cargar historial', err);
+            return [];
+        }
+    };
+
     const inicializarPagina = useCallback(async () => {
         setLoading(true);
         try {
-            let ajustePendiente = null;
+            const cabecerasHistorial = await cargarHistorial();
 
+            let ajustePendiente = null;
             try {
                 ajustePendiente = await getAjusteCabeceraActual();
             } catch (error) {
@@ -63,35 +109,23 @@ const AjusteProductosPage = () => {
             }
 
             if (ajustePendiente) {
-                setNumeroAjuste(ajustePendiente.numero_ajuste);
-                setFecha(new Date(ajustePendiente.fecha).toISOString().substring(0, 10));
-                setDescripcion(ajustePendiente.descripcion || '');
-                setDetalles((ajustePendiente.detalles || []).map((item) => ({
-                    codigo: item.codigo_producto,
-                    nombre: item.producto_nombre || item.codigo_producto,
-                    stock_actual: item.stock_actual ?? 0,
-                    pvp: item.pvp ?? 0,
-                    graba_iva: Boolean(item.graba_iva),
-                    porcentaje_iva_aplicado: item.porcentaje_iva_aplicado ?? 0,
-                    cantidad: item.cantidad,
-                    stock_resultante: item.stock_resultante ?? (item.stock_actual ?? 0) + item.cantidad,
-                    subtotal: item.subtotal ?? Math.abs(item.cantidad) * (item.pvp ?? 0)
-                })));
-                setDocumentoGuardado(ajustePendiente);
-                return;
+                cargarAjusteEnFormularioLocally(ajustePendiente);
+            } else {
+                const proximoNumero = calcularSiguienteNumero(cabecerasHistorial);
+                setNumeroAjuste(proximoNumero);
+                setFecha(new Date().toISOString().substring(0, 10));
+                setDescripcion('');
+                setDetalles([]);
+                setDocumentoGuardado(null);
+                setErroresForm({});
             }
 
-            // 1. Obtener cabeceras existentes para calcular el siguiente número de ajuste
-            const cabeceras = await getAjustesCabecera();
-            const proximoNumero = calcularSiguienteNumero(cabeceras);
-            setNumeroAjuste(proximoNumero);
-            setDescripcion('');
-            setDetalles([]);
-            setDocumentoGuardado(null);
-
-            // 2. Cargar catálogo de productos
-            const catalogo = await getProductosCatalogo();
-            setProductosCatalogo(catalogo);
+            try {
+                const catalogo = await getProductosCatalogo();
+                setProductosCatalogo(catalogo);
+            } catch (err) {
+                console.error(err);
+            }
         } catch (err) {
             console.error(err);
             setMensaje({ 
@@ -103,24 +137,96 @@ const AjusteProductosPage = () => {
         }
     }, []);
 
-    const documentoBloqueado = Boolean(documentoGuardado);
-    const documentoImpreso = Boolean(documentoGuardado?.impreso);
-
     useEffect(() => {
         const t = setTimeout(() => inicializarPagina(), 0);
         return () => clearTimeout(t);
     }, [inicializarPagina]);
 
-    const handleOpenModal = async () => {
-        if (documentoBloqueado) {
-            return;
+    const handleNuevoFormulario = async () => {
+        setLoading(true);
+        setMensaje({ texto: '', tipo: '' });
+        try {
+            const cabeceras = await cargarHistorial();
+            const proximoNumero = calcularSiguienteNumero(cabeceras);
+            setNumeroAjuste(proximoNumero);
+            setFecha(new Date().toISOString().substring(0, 10));
+            setDescripcion('');
+            setDetalles([]);
+            setDocumentoGuardado(null);
+            setErroresForm({});
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
         }
+    };
+
+    const handleEditarAjuste = async (numeroAj) => {
+        setLoading(true);
+        setMensaje({ texto: '', tipo: '' });
+        try {
+            const cabeceraCompleta = await getAjusteCabeceraPorId(numeroAj);
+            cargarAjusteEnFormularioLocally(cabeceraCompleta);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (err) {
+            console.error(err);
+            setMensaje({ texto: 'Error al cargar el ajuste para edición.', tipo: 'error' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleImprimirDesdeLista = async (numeroAj) => {
+        setLoading(true);
+        setMensaje({ texto: '', tipo: '' });
+        try {
+            const response = await imprimirAjuste(numeroAj);
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+            window.open(url, '_blank', 'noopener,noreferrer');
+            setMensaje({ texto: `Documento ${numeroAj} impreso y bloqueado correctamente.`, tipo: 'exito' });
+            setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+            
+            await cargarHistorial(); // Refrescar lista
+
+            // Si el ajuste que se acaba de imprimir es el que está abierto en el formulario, 
+            // lo actualizamos para que se bloquee también en la vista superior.
+            if (documentoGuardado && documentoGuardado.numero_ajuste === numeroAj) {
+                setDocumentoGuardado((actual) => ({ ...(actual || {}), impreso: true }));
+            }
+        } catch (error) {
+            const msgError = error.response?.data?.mensaje || error.response?.data?.error || error.message;
+            setMensaje({ texto: `Error al imprimir el documento: ${msgError}`, tipo: 'error' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerDetalles = async (numeroAj) => {
+        setLoading(true);
+        try {
+            const cabeceraCompleta = await getAjusteCabeceraPorId(numeroAj);
+            setAjusteDetallesView(cabeceraCompleta);
+            setShowDetallesModal(true);
+        } catch (err) {
+            console.error(err);
+            setMensaje({ texto: 'Error al cargar los detalles del ajuste.', tipo: 'error' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const documentoImpreso = Boolean(documentoGuardado?.impreso);
+    const documentoBloqueado = documentoImpreso;
+
+    const handleOpenModal = async () => {
+        if (documentoBloqueado) return;
         setErrorModal('');
         setFiltroBusqueda('');
         setProductoSeleccionado(null);
         setCantidadModal('');
         
-        // Recargar catálogo antes de abrir para tener stocks frescos
         try {
             const catalogo = await getProductosCatalogo();
             setProductosCatalogo(catalogo);
@@ -131,14 +237,10 @@ const AjusteProductosPage = () => {
         setShowModal(true);
     };
 
-    const handleCloseModal = () => {
-        setShowModal(false);
-    };
+    const handleCloseModal = () => setShowModal(false);
 
     const handleSeleccionarProducto = (prod) => {
-        if (documentoBloqueado) {
-            return;
-        }
+        if (documentoBloqueado) return;
         setProductoSeleccionado(prod);
         setErrorModal('');
         setCantidadModal('');
@@ -161,14 +263,12 @@ const AjusteProductosPage = () => {
             return;
         }
 
-        // Validación: stock resultante no puede ser negativo si se resta stock
         const stockResultante = productoSeleccionado.stock_actual + cantidad;
         if (stockResultante < 0) {
             setErrorModal(`Stock insuficiente. El stock resultante (${stockResultante}) no puede ser menor a 0.`);
             return;
         }
 
-        // Validación: no permitir duplicados
         const existe = detalles.some(item => item.codigo === productoSeleccionado.codigo);
         if (existe) {
             setErrorModal('El producto ya está en el detalle. Si desea cambiar la cantidad, elimínelo e insértelo nuevamente.');
@@ -191,26 +291,34 @@ const AjusteProductosPage = () => {
 
         setDetalles([...detalles, nuevoItem]);
         setShowModal(false);
-        setMensaje({ texto: '', tipo: '' }); // Limpiar posibles alertas
+        setMensaje({ texto: '', tipo: '' });
     };
 
-    const handleEliminarDetalle = (codigo) => {
-        if (documentoBloqueado) {
-            return;
+    const handleEliminarDetalle = async (codigo) => {
+        if (documentoBloqueado) return;
+        const itemToRemove = detalles.find(item => item.codigo === codigo);
+        if (itemToRemove?.id_detalle) {
+            if (!window.confirm('Este producto ya está guardado en el documento. ¿Desea eliminarlo permanentemente y revertir su stock?')) return;
+            setLoading(true);
+            try {
+                await eliminarAjusteDetalle(itemToRemove.id_detalle);
+                await cargarHistorial(); // Actualizar lista
+            } catch (error) {
+                const msgError = error.response?.data?.mensaje || error.message;
+                setMensaje({ texto: `Error al eliminar el detalle: ${msgError}`, tipo: 'error' });
+                setLoading(false);
+                return;
+            }
+            setLoading(false);
         }
         const nuevosDetalles = detalles.filter(item => item.codigo !== codigo);
         setDetalles(nuevosDetalles);
     };
 
     const handleGuardar = async () => {
-        // Validaciones generales
         const errores = {};
-        if (!descripcion.trim()) {
-            errores.descripcion = 'La descripción es obligatoria.';
-        }
-        if (detalles.length === 0) {
-            errores.detalles = 'Debe registrar al menos un producto en el detalle.';
-        }
+        if (!descripcion.trim()) errores.descripcion = 'La descripción es obligatoria.';
+        if (detalles.length === 0) errores.detalles = 'Debe registrar al menos un producto en el detalle.';
 
         if (Object.keys(errores).length > 0) {
             setErroresForm(errores);
@@ -222,38 +330,73 @@ const AjusteProductosPage = () => {
         setLoading(true);
 
         try {
-            // 1. Guardar la cabecera
-            const cabeceraCreada = await crearAjusteCabecera({
-                descripcion: descripcion.trim(),
-                fecha: new Date(fecha).toISOString(),
-                impreso: false
-            });
-
-            const nroAjusteReal = cabeceraCreada.numero_ajuste;
-
-            // 2. Guardar los detalles secuencialmente para evitar bloqueos
-            for (const item of detalles) {
-                await crearAjusteDetalle({
-                    numero_ajuste: nroAjusteReal,
-                    codigo_producto: item.codigo,
-                    cantidad: item.cantidad
+            if (documentoGuardado) {
+                // Modo Edición: Actualizar cabecera
+                await actualizarAjusteCabecera(documentoGuardado.numero_ajuste, {
+                    descripcion: descripcion.trim(),
+                    fecha: new Date(fecha).toISOString(),
+                    impreso: false
                 });
+
+                // Crear solo los detalles que no han sido guardados
+                const detallesNuevos = detalles.filter(d => !d.id_detalle);
+                for (const item of detallesNuevos) {
+                    const res = await crearAjusteDetalle({
+                        numero_ajuste: documentoGuardado.numero_ajuste,
+                        codigo_producto: item.codigo,
+                        cantidad: item.cantidad
+                    });
+                    item.id_detalle = res.id_detalle;
+                }
+
+                setMensaje({
+                    texto: `Ajuste ${documentoGuardado.numero_ajuste} actualizado exitosamente.`,
+                    tipo: 'exito'
+                });
+
+                // Limpiar campos
+                const cabeceras = await cargarHistorial();
+                const proximoNumero = calcularSiguienteNumero(cabeceras);
+                setNumeroAjuste(proximoNumero);
+                setFecha(new Date().toISOString().substring(0, 10));
+                setDescripcion('');
+                setDetalles([]);
+                setDocumentoGuardado(null);
+                setErroresForm({});
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                // Modo Creación
+                const cabeceraCreada = await crearAjusteCabecera({
+                    descripcion: descripcion.trim(),
+                    fecha: new Date(fecha).toISOString(),
+                    impreso: false
+                });
+
+                const nroAjusteReal = cabeceraCreada.numero_ajuste;
+
+                for (const item of detalles) {
+                    const res = await crearAjusteDetalle({
+                        numero_ajuste: nroAjusteReal,
+                        codigo_producto: item.codigo,
+                        cantidad: item.cantidad
+                    });
+                    item.id_detalle = res.id_detalle;
+                }
+
+                setDocumentoGuardado({
+                    numero_ajuste: nroAjusteReal,
+                    descripcion: descripcion.trim(),
+                    fecha: new Date(fecha).toISOString(),
+                    impreso: false
+                });
+
+                setMensaje({
+                    texto: `Ajuste ${nroAjusteReal} registrado exitosamente.`,
+                    tipo: 'exito'
+                });
+
+                await cargarHistorial(); // Refrescar lista con el documento actualizado
             }
-
-            setMensaje({
-                texto: `Ajuste ${nroAjusteReal} registrado exitosamente. Se actualizó el stock de los productos.`,
-                tipo: 'exito'
-            });
-
-            setDocumentoGuardado({
-                numero_ajuste: nroAjusteReal,
-                descripcion: descripcion.trim(),
-                fecha: new Date(fecha).toISOString(),
-                impreso: false
-            });
-            
-            // Mantener los datos visibles para revisar/imprimir el documento.
-
         } catch (error) {
             const msgError = error.response?.data?.mensaje || error.response?.data?.error || error.message;
             setMensaje({
@@ -280,6 +423,8 @@ const AjusteProductosPage = () => {
             setDocumentoGuardado((actual) => ({ ...(actual || {}), impreso: true }));
             setMensaje({ texto: `Documento ${documentoGuardado.numero_ajuste} impreso y bloqueado correctamente.`, tipo: 'exito' });
             setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+            
+            await cargarHistorial(); // Refrescar lista para que aparezca como impreso
         } catch (error) {
             const msgError = error.response?.data?.mensaje || error.response?.data?.error || error.message;
             setMensaje({ texto: `Error al imprimir el documento: ${msgError}`, tipo: 'error' });
@@ -289,22 +434,22 @@ const AjusteProductosPage = () => {
     };
 
     const handleCancelar = () => {
-        // Redirige al inicio o limpia
         navigate('/');
     };
 
-    // Filtrar catálogo en base a la búsqueda
     const productosFiltrados = productosCatalogo.filter(p => 
         p.codigo.toLowerCase().includes(filtroBusqueda.toLowerCase()) || 
         p.nombre.toLowerCase().includes(filtroBusqueda.toLowerCase())
     );
 
-    // Totales rápidos
     const totalCantidadItems = detalles.reduce((sum, item) => sum + Math.abs(item.cantidad), 0);
     const totalSubtotal = detalles.reduce((sum, item) => sum + item.subtotal, 0);
 
     return (
         <div className="ajuste-page-container">
+            {/* =========================================
+                SECCIÓN SUPERIOR: FORMULARIO DE AJUSTE
+            ========================================= */}
             <header className="page-header">
                 <div>
                     <h2>Documento de Ajuste</h2>
@@ -321,8 +466,8 @@ const AjusteProductosPage = () => {
                     >
                         {documentoImpreso ? 'PDF ya impreso' : 'Imprimir PDF'}
                     </button>
-                    <button className="btn btn-secondary" onClick={handleCancelar} disabled={loading}>
-                        Salir
+                    <button className="btn btn-secondary" onClick={handleNuevoFormulario} disabled={loading}>
+                        Nuevo Ajuste
                     </button>
                 </div>
             </header>
@@ -452,7 +597,7 @@ const AjusteProductosPage = () => {
                 {detalles.length > 0 && (
                     <div className="total-summary-bar">
                         <div className="summary-item">
-                            Cantidad Ajustada: <strong>{totalCantidadItems} u.</strong>
+                            Cantidad Ajustada: <strong>{totalCantidadItems} unidades</strong>
                         </div>
                         <div className="summary-item">
                             Total Subtotal: <strong>${totalSubtotal.toFixed(2)}</strong>
@@ -469,6 +614,82 @@ const AjusteProductosPage = () => {
                 <button className="btn btn-primary" onClick={handleGuardar} disabled={loading || documentoBloqueado}>
                     {loading ? 'Guardando...' : 'Guardar Ajuste'}
                 </button>
+            </div>
+
+            <hr style={{ margin: '40px 0', borderColor: 'var(--border-color)', borderStyle: 'solid', borderWidth: '1px 0 0 0' }} />
+
+            {/* =========================================
+                SECCIÓN INFERIOR: HISTORIAL DE AJUSTES
+            ========================================= */}
+            <div className="ajuste-card historial-section">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                    <h3 style={{ margin: 0 }}>Historial de Ajustes</h3>
+                    <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+                        Histórico completo de movimientos realizados
+                    </p>
+                </div>
+                
+                <div style={{ overflowX: 'auto' }}>
+                    <table className="modern-table">
+                        <thead>
+                            <tr>
+                                <th>Número</th>
+                                <th>Fecha</th>
+                                <th>Descripción</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {historialAjustes.length === 0 ? (
+                                <tr>
+                                    <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                        No hay ajustes registrados en el historial.
+                                    </td>
+                                </tr>
+                            ) : (
+                                historialAjustes.map((item) => (
+                                    <tr key={item.numero_ajuste}>
+                                        <td style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
+                                            {item.numero_ajuste}
+                                        </td>
+                                        <td>{new Date(item.fecha).toLocaleDateString('es-EC')}</td>
+                                        <td>{item.descripcion}</td>
+                                        <td>
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                <button 
+                                                    className="btn btn-secondary" 
+                                                    style={{ padding: '4px 8px', fontSize: '12px' }}
+                                                    onClick={() => handleVerDetalles(item.numero_ajuste)}
+                                                    disabled={loading}
+                                                >
+                                                    Detalles
+                                                </button>
+                                                {!item.impreso && (
+                                                    <button 
+                                                        className="btn btn-secondary" 
+                                                        style={{ padding: '4px 8px', fontSize: '12px' }}
+                                                        onClick={() => handleEditarAjuste(item.numero_ajuste)}
+                                                        disabled={loading}
+                                                    >
+                                                        Editar
+                                                    </button>
+                                                )}
+                                                <button 
+                                                    className="btn btn-primary" 
+                                                    style={{ padding: '4px 8px', fontSize: '12px' }}
+                                                    onClick={() => handleImprimirDesdeLista(item.numero_ajuste)}
+                                                    disabled={loading}
+                                                >
+                                                    {item.impreso ? 'Imprimir PDF' : 'Imprimir'}
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* MODAL AGREGAR PRODUCTO */}
@@ -568,6 +789,60 @@ const AjusteProductosPage = () => {
                             <button className="btn btn-primary" onClick={handleAgregarDetalle} disabled={!productoSeleccionado || documentoBloqueado}>
                                 Agregar
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL VER DETALLES */}
+            {showDetallesModal && ajusteDetallesView && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '700px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ color: 'var(--primary-hover)', marginTop: 0 }}>
+                                Detalles del Ajuste: {ajusteDetallesView.numero_ajuste}
+                            </h3>
+                            <button className="btn btn-secondary" onClick={() => setShowDetallesModal(false)}>
+                                Cerrar
+                            </button>
+                        </div>
+                        <div style={{ marginBottom: '15px' }}>
+                            <strong>Fecha:</strong> {new Date(ajusteDetallesView.fecha).toLocaleDateString('es-EC')} <br/>
+                            <strong>Descripción:</strong> {ajusteDetallesView.descripcion} <br/>
+                        </div>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table className="modern-table">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Producto</th>
+                                        <th>Cantidad</th>
+                                        <th>Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(ajusteDetallesView.detalles || []).length === 0 ? (
+                                        <tr>
+                                            <td colSpan="4" style={{ textAlign: 'center' }}>No hay detalles registrados.</td>
+                                        </tr>
+                                    ) : (
+                                        ajusteDetallesView.detalles.map((d, i) => {
+                                            const pvp = parseFloat(d.pvp || 0);
+                                            const subtotal = d.subtotal !== undefined ? parseFloat(d.subtotal) : (Math.abs(parseInt(d.cantidad || 0, 10)) * pvp);
+                                            return (
+                                                <tr key={i}>
+                                                    <td>{d.codigo_producto}</td>
+                                                    <td>{d.producto_nombre || d.codigo_producto}</td>
+                                                    <td style={{ fontWeight: 'bold', color: d.cantidad < 0 ? 'var(--error-color)' : 'var(--primary-hover)' }}>
+                                                        {d.cantidad > 0 ? `+${d.cantidad}` : d.cantidad}
+                                                    </td>
+                                                    <td>${subtotal.toFixed(2)}</td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

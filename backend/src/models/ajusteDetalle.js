@@ -11,6 +11,8 @@ const bloquearSiImpreso = async (client, numeroAjuste) => {
     if (rows[0].impreso) {
         throw new Error(`El ajuste ${numeroAjuste} ya fue impreso y no puede modificarse.`);
     }
+
+    return rows[0];
 };
 
 const AjusteDetalle = {
@@ -69,6 +71,8 @@ const AjusteDetalle = {
 
         const updateQuery = 'UPDATE producto SET stock_actual = $1 WHERE codigo = $2';
         await client.query(updateQuery, [nuevoStock, codigo_producto]);
+
+        return { nuevoStock, costo: prod.costo };
     },
 
     // Crear un detalle y actualizar stock
@@ -79,10 +83,10 @@ const AjusteDetalle = {
 
             const { numero_ajuste, codigo_producto, cantidad } = datos;
 
-            await bloquearSiImpreso(client, numero_ajuste);
+            const cabecera = await bloquearSiImpreso(client, numero_ajuste);
 
             // 1. Validar e impactar stock
-            await AjusteDetalle.actualizarStockInterno(client, codigo_producto, cantidad);
+            const { nuevoStock, costo } = await AjusteDetalle.actualizarStockInterno(client, codigo_producto, cantidad);
 
             // 2. Insertar detalle
             const query = `
@@ -91,6 +95,28 @@ const AjusteDetalle = {
                 RETURNING *
             `;
             const { rows } = await client.query(query, [numero_ajuste, codigo_producto, cantidad]);
+
+            // 3. Registrar en kardex
+            const kardexQuery = `
+                INSERT INTO movimiento_kardex (
+                    codigo_producto, fecha, tipo_movimiento, documento_referencia,
+                    descripcion, cantidad, costo_unitario, valor_total, stock_resultante
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            `;
+            const tipoMovimiento = cantidad >= 0 ? 'AJUSTE_INGRESO' : 'AJUSTE_EGRESO';
+            const valorTotal = Math.abs(cantidad) * costo;
+
+            await client.query(kardexQuery, [
+                codigo_producto,
+                cabecera.fecha,
+                tipoMovimiento,
+                numero_ajuste,
+                cabecera.descripcion || 'Ajuste de inventario',
+                cantidad,
+                costo,
+                valorTotal,
+                nuevoStock
+            ]);
 
             await client.query('COMMIT');
             return rows[0];
@@ -118,21 +144,43 @@ const AjusteDetalle = {
             }
 
             const detAnterior = detailRes.rows[0];
-            await bloquearSiImpreso(client, detAnterior.numero_ajuste);
+            const cabecera = await bloquearSiImpreso(client, detAnterior.numero_ajuste);
             const anteriorCodigo = detAnterior.codigo_producto;
             const anteriorCantidad = detAnterior.cantidad;
+
+            const kardexQuery = `
+                INSERT INTO movimiento_kardex (
+                    codigo_producto, fecha, tipo_movimiento, documento_referencia,
+                    descripcion, cantidad, costo_unitario, valor_total, stock_resultante
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            `;
 
             // 2. Ajustar stocks
             if (anteriorCodigo === nuevoCodigo) {
                 const diferencia = nuevaCantidad - anteriorCantidad;
                 if (diferencia !== 0) {
-                    await AjusteDetalle.actualizarStockInterno(client, nuevoCodigo, diferencia);
+                    const { nuevoStock, costo } = await AjusteDetalle.actualizarStockInterno(client, nuevoCodigo, diferencia);
+                    await client.query(kardexQuery, [
+                        nuevoCodigo, new Date().toISOString(), diferencia >= 0 ? 'AJUSTE_INGRESO' : 'AJUSTE_EGRESO',
+                        detAnterior.numero_ajuste, 'Actualización de cantidad de ajuste',
+                        diferencia, costo, Math.abs(diferencia) * costo, nuevoStock
+                    ]);
                 }
             } else {
                 // Revertir del producto anterior
-                await AjusteDetalle.actualizarStockInterno(client, anteriorCodigo, -anteriorCantidad);
+                const rev = await AjusteDetalle.actualizarStockInterno(client, anteriorCodigo, -anteriorCantidad);
+                await client.query(kardexQuery, [
+                    anteriorCodigo, new Date().toISOString(), 'REVERSO_AJUSTE', detAnterior.numero_ajuste,
+                    'Reverso por cambio de producto en ajuste', -anteriorCantidad, rev.costo, Math.abs(anteriorCantidad) * rev.costo, rev.nuevoStock
+                ]);
+                
                 // Aplicar al nuevo producto
-                await AjusteDetalle.actualizarStockInterno(client, nuevoCodigo, nuevaCantidad);
+                const apl = await AjusteDetalle.actualizarStockInterno(client, nuevoCodigo, nuevaCantidad);
+                await client.query(kardexQuery, [
+                    nuevoCodigo, cabecera.fecha, nuevaCantidad >= 0 ? 'AJUSTE_INGRESO' : 'AJUSTE_EGRESO',
+                    detAnterior.numero_ajuste, cabecera.descripcion || 'Actualización de ajuste',
+                    nuevaCantidad, apl.costo, Math.abs(nuevaCantidad) * apl.costo, apl.nuevoStock
+                ]);
             }
 
             // 3. Actualizar fila
@@ -167,14 +215,33 @@ const AjusteDetalle = {
             }
 
             const detalle = detailRes.rows[0];
-            await bloquearSiImpreso(client, detalle.numero_ajuste);
+            const cabecera = await bloquearSiImpreso(client, detalle.numero_ajuste);
 
             // Revertir stock (restar la cantidad aplicada)
-            await AjusteDetalle.actualizarStockInterno(client, detalle.codigo_producto, -detalle.cantidad);
+            const { nuevoStock, costo } = await AjusteDetalle.actualizarStockInterno(client, detalle.codigo_producto, -detalle.cantidad);
 
             // Eliminar fila
             const queryDelete = 'DELETE FROM ajuste_detalle WHERE id_detalle = $1 RETURNING *';
             const { rows } = await client.query(queryDelete, [id_detalle]);
+
+            // Revertir en kardex
+            const kardexQuery = `
+                INSERT INTO movimiento_kardex (
+                    codigo_producto, fecha, tipo_movimiento, documento_referencia,
+                    descripcion, cantidad, costo_unitario, valor_total, stock_resultante
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            `;
+            await client.query(kardexQuery, [
+                detalle.codigo_producto,
+                new Date().toISOString(),
+                'REVERSO_AJUSTE',
+                detalle.numero_ajuste,
+                'Reverso por eliminación de detalle de ajuste',
+                -detalle.cantidad,
+                costo,
+                Math.abs(detalle.cantidad) * costo,
+                nuevoStock
+            ]);
 
             await client.query('COMMIT');
             return rows[0];

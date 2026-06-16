@@ -174,9 +174,9 @@ export default function KardexPage() {
                         </td>
                         <td style={{
                           padding: '10px 14px', fontWeight: '600',
-                          color: mov.tipo_movimiento === 'VENTA' ? '#dc3545' : '#28a745'
+                          color: Number(mov.cantidad) < 0 ? '#dc3545' : '#28a745'
                         }}>
-                          {mov.tipo_movimiento === 'VENTA' ? '-' : '+'}{mov.cantidad}
+                          {Number(mov.cantidad) > 0 ? `+${mov.cantidad}` : mov.cantidad}
                         </td>
                         <td style={{ padding: '10px 14px' }}>
                           ${Number(mov.costo_unitario).toFixed(2)}
