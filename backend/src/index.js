@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const pool = require("./config/db");
+const reportesRoutes = require('./routes/reportes');
 
 // Importar rutas
 const productoRoutes = require("./routes/productoRoutes");
@@ -48,3 +49,4 @@ app.listen(PORT, () => {
     swaggerDocs(app, PORT);
 });
 
+app.use('/api/reportes', reportesRoutes);
