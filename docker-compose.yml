@@ -1,0 +1,25 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: inventariopro-backend
+    environment:
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL}
+      IVA_PORCENTAJE: ${IVA_PORCENTAJE:-15}
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: inventariopro-frontend
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://backend:3000
+    ports:
+      - "8080:80"
+    restart: unless-stopped

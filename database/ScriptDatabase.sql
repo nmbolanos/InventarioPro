@@ -2,14 +2,14 @@
 -- 1. CREACIÓN DE LA SECUENCIA
 -- ==============================================================================
 -- Esta secuencia llevará el conteo automático para los ajustes (1, 2, 3...)
-CREATE SEQUENCE seq_numero_ajuste START 1;
+CREATE SEQUENCE IF NOT EXISTS seq_numero_ajuste START 1;
 
 -- ==============================================================================
 -- 2. CREACIÓN DE TABLAS
 -- ==============================================================================
 
 -- Tabla Producto
-CREATE TABLE producto (
+CREATE TABLE IF NOT EXISTS producto (
     codigo VARCHAR(50) PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
     descripcion VARCHAR(255),
@@ -21,7 +21,7 @@ CREATE TABLE producto (
 );
 
 -- Tabla Ajuste Cabecera
-CREATE TABLE ajuste_cabecera (
+CREATE TABLE IF NOT EXISTS ajuste_cabecera (
     numero_ajuste VARCHAR(20) PRIMARY KEY,
     descripcion VARCHAR(255) NOT NULL,
     fecha TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -29,7 +29,7 @@ CREATE TABLE ajuste_cabecera (
 );
 
 -- Tabla Ajuste Detalle
-CREATE TABLE ajuste_detalle (
+CREATE TABLE IF NOT EXISTS ajuste_detalle (
     id_detalle SERIAL PRIMARY KEY,
     numero_ajuste VARCHAR(20) REFERENCES ajuste_cabecera(numero_ajuste) ON DELETE CASCADE,
     codigo_producto VARCHAR(50) REFERENCES producto(codigo),
@@ -37,7 +37,7 @@ CREATE TABLE ajuste_detalle (
 );
 
 -- Tabla Movimiento Kardex
-CREATE TABLE movimiento_kardex (
+CREATE TABLE IF NOT EXISTS movimiento_kardex (
     id_movimiento SERIAL PRIMARY KEY,
     codigo_producto VARCHAR(50) REFERENCES producto(codigo),
     fecha TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -67,7 +67,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger que se dispara antes de insertar la cabecera
-CREATE TRIGGER trg_asignar_numero_ajuste
+CREATE OR REPLACE TRIGGER trg_asignar_numero_ajuste
 BEFORE INSERT ON ajuste_cabecera
 FOR EACH ROW
 EXECUTE FUNCTION fn_generar_numero_ajuste();

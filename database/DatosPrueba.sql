@@ -26,3 +26,6 @@ INSERT INTO movimiento_kardex (codigo_producto, fecha, tipo_movimiento, document
 ('PRD-003', '2026-06-10 09:00:00', 'COMPRA', 'COMP-102', 'FACT. COMPRA 102 - Microsoft', 100, 40.00, 4000.00, 100),
 ('PRD-002', '2026-06-11 11:20:00', 'VENTA', 'FACT-001-001-000000002', 'FACT. VENTA 002 - Cliente Z', -5, 15.00, -75.00, 45),
 ('PRD-005', '2026-06-13 16:45:00', 'AJUSTE', 'AJUS-0002', 'AJUSTE POR DAÑO EN BODEGA', -2, 110.00, -220.00, 8);
+
+-- 5. Sincronizar secuencia del número de ajuste
+SELECT setval('seq_numero_ajuste', COALESCE((SELECT MAX(CAST(SUBSTRING(numero_ajuste FROM 6) AS INTEGER)) FROM ajuste_cabecera), 1), true);

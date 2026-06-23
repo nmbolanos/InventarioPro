@@ -1,16 +1,22 @@
 const express = require("express");
 const cors = require("cors");
 const pool = require("./config/db");
+const reportesRoutes = require('./routes/reportes');
+
+// Importar rutas
+const productoRoutes = require("./routes/productoRoutes");
+const ajusteCabeceraRoutes = require("./routes/ajusteCabecera");
+const ajusteDetalleRoutes = require("./routes/ajusteDetalle");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// Rutas
-const productoRoutes = require('./routes/productoRoutes');
-
-app.use('/api/productos', productoRoutes);
+// Montar rutas de la API
+app.use("/api/productos", productoRoutes);
+app.use("/api/ajustes/cabecera", ajusteCabeceraRoutes);
+app.use("/api/ajustes/detalle", ajusteDetalleRoutes);
 
 // Ruta principal
 app.get("/", (req, res) => {
@@ -42,3 +48,5 @@ app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
     swaggerDocs(app, PORT);
 });
+
+app.use('/api/reportes', reportesRoutes);

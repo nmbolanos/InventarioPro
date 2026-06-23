@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getProducto, createProducto, updateProducto } from '../services/productoService';
 import ProductoForm from '../components/ProductoForm';
+import AlertMessage from '../components/AlertMessage';
 import './ProductosPage.css'; // Reutilizamos los estilos del contenedor
 
 const ProductoFormPage = () => {
@@ -12,23 +13,25 @@ const ProductoFormPage = () => {
     const [loading, setLoading] = useState(false);
     const [mensajeError, setMensajeError] = useState('');
 
-    useEffect(() => {
-        if (codigo) {
-            cargarProducto(codigo);
-        }
-    }, [codigo]);
-
-    const cargarProducto = async (codigoProducto) => {
+    async function cargarProducto(codigoProducto) {
         setLoading(true);
         try {
             const data = await getProducto(codigoProducto);
             setProducto(data);
-        } catch (error) {
+        } catch (err) {
+            console.error(err);
             setMensajeError('No se pudo cargar la información del producto.');
         } finally {
             setLoading(false);
         }
-    };
+    }
+
+    useEffect(() => {
+        if (codigo) {
+            const t = setTimeout(() => cargarProducto(codigo), 0);
+            return () => clearTimeout(t);
+        }
+    }, [codigo]);
 
     const handleGuardar = async (productoData) => {
         try {
@@ -64,11 +67,7 @@ const ProductoFormPage = () => {
                 </button>
             </header>
 
-            {mensajeError && (
-                <div className="mensaje-alerta mensaje-alerta-error">
-                    {mensajeError}
-                </div>
-            )}
+            <AlertMessage texto={mensajeError} tipo="error" onClose={() => setMensajeError('')} />
 
             <div className="page-content">
                 <ProductoForm 

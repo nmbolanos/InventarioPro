@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProductos, desactivarProducto } from '../services/productoService';
 import ProductoList from '../components/ProductoList';
+import AlertMessage from '../components/AlertMessage';
 import './ProductosPage.css';
 
 const ProductosPage = () => {
@@ -12,23 +13,25 @@ const ProductosPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('Todos'); // 'Todos', 'Activo', 'Inactivo'
 
-    useEffect(() => {
-        cargarProductos();
-    }, []);
-
-    const cargarProductos = async () => {
-        try {
-            const data = await getProductos();
-            setProductos(data);
-        } catch (error) {
-            mostrarMensaje('Error al cargar productos del servidor', 'error');
-        }
-    };
-
     const mostrarMensaje = (texto, tipo) => {
         setMensaje({ texto, tipo });
         setTimeout(() => setMensaje({ texto: '', tipo: '' }), 5000);
     };
+
+    const cargarProductos = useCallback(async () => {
+        try {
+            const data = await getProductos();
+            setProductos(data);
+        } catch (err) {
+            console.error(err);
+            mostrarMensaje('Error al cargar productos del servidor', 'error');
+        }
+    }, []);
+
+    useEffect(() => {
+        const t = setTimeout(() => cargarProductos(), 0);
+        return () => clearTimeout(t);
+    }, [cargarProductos]);
 
     const handleCrearNuevo = () => {
         navigate('/productos/nuevo');
@@ -52,6 +55,7 @@ const ProductosPage = () => {
             mostrarMensaje('Producto desactivado exitosamente', 'exito');
             cargarProductos();
         } catch (error) {
+            console.error(error);
             mostrarMensaje('Error al desactivar el producto', 'error');
         } finally {
             setProductoADesactivar(null); // Cerrar modal
@@ -79,11 +83,11 @@ const ProductosPage = () => {
                 </button>
             </header>
 
-            {mensaje.texto && (
-                <div className={`mensaje-alerta ${mensaje.tipo === 'error' ? 'mensaje-alerta-error' : 'mensaje-alerta-exito'}`}>
-                    {mensaje.texto}
-                </div>
-            )}
+            <AlertMessage 
+                texto={mensaje.texto} 
+                tipo={mensaje.tipo} 
+                onClose={() => setMensaje({ texto: '', tipo: '' })} 
+            />
 
             <div className="page-content">
                 <div className="filtros-container card">
