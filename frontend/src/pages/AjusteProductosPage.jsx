@@ -391,19 +391,21 @@ const AjusteProductosPage = () => {
                     });
                 }
 
-                setDetalles(detallesConId);
-
-                setDocumentoGuardado({
-                    numero_ajuste: nroAjusteReal,
-                    ...datosCabecera
-                });
-
                 setMensaje({
-                    texto: `Ajuste ${nroAjusteReal} registrado exitosamente.`,
+                    texto: `Ajuste ${nroAjusteReal} registrado exitosamente. Puede imprimirlo desde la pestaña Historial.`,
                     tipo: 'exito'
                 });
 
-                await cargarHistorial(); // Refrescar lista con el documento actualizado
+                // Limpiar campos y preparar el siguiente número
+                const cabeceras = await cargarHistorial();
+                const proximoNumero = calcularSiguienteNumero(cabeceras);
+                setNumeroAjuste(proximoNumero);
+                setFecha(new Date().toISOString().substring(0, 10));
+                setDescripcion('');
+                setDetalles([]);
+                setDocumentoGuardado(null);
+                setErroresForm({});
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         } catch (error) {
             console.error("=== ERROR EN EL BACKEND ===", error);
@@ -463,7 +465,7 @@ const AjusteProductosPage = () => {
     const historialFiltrado = historialAjustes.filter(item => {
         if (!item.fecha) return true;
         const fechaItem = new Date(item.fecha).toISOString().substring(0, 10);
-        
+
         if (fechaDesde && fechaItem < fechaDesde) return false;
         if (fechaHasta && fechaItem > fechaHasta) return false;
         return true;
@@ -488,57 +490,55 @@ const AjusteProductosPage = () => {
                 <div>
                     <h2>Ajustes de Inventario</h2>
                     <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)' }}>
-                        {activeTab === 'nuevo' 
-                          ? (documentoImpreso ? 'Documento impreso y bloqueado' : documentoBloqueado ? 'Documento guardado, listo para imprimir' : 'Documento en edición') 
-                          : 'Historial completo de ajustes'}
+                        {activeTab === 'nuevo'
+                            ? (documentoImpreso ? 'Documento impreso y bloqueado' : documentoBloqueado ? 'Documento guardado, listo para imprimir' : 'Documento en edición')
+                            : 'Historial completo de ajustes'}
                     </p>
                 </div>
                 {activeTab === 'nuevo' && (
                     <div className="header-actions" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                        <button
-                            className="btn btn-primary"
-                            onClick={handleImprimir}
-                            disabled={loading || !documentoBloqueado || documentoImpreso}
-                            title={!documentoBloqueado ? 'Primero debe guardar el documento' : documentoImpreso ? 'El documento ya fue impreso' : 'Imprimir documento en PDF'}
-                        >
-                            {documentoImpreso ? 'PDF ya impreso' : 'Imprimir PDF'}
-                        </button>
-                        <button className="btn btn-secondary" onClick={handleNuevoFormulario} disabled={loading}>
-                            Limpiar Formulario
-                        </button>
                     </div>
                 )}
             </header>
 
             {/* TABS CONTAINER */}
-            <div className="tabs-container">
-                <button
-                    className={`tab-button ${activeTab === 'nuevo' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('nuevo')}
-                >
-                    Nuevo / Editar Ajuste
-                </button>
-                <button
-                    className={`tab-button ${activeTab === 'historial' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('historial')}
-                >
-                    Historial de Ajustes
-                </button>
+            <div className="tabs-container" style={{ justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                        className={`tab-button ${activeTab === 'nuevo' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('nuevo')}
+                    >
+                        Nuevo / Editar Ajuste
+                    </button>
+                    <button
+                        className={`tab-button ${activeTab === 'historial' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('historial')}
+                    >
+                        Historial de Ajustes
+                    </button>
+                </div>
+                {activeTab === 'nuevo' && (
+                    <div style={{ display: 'flex', gap: '10px', paddingBottom: '8px' }}>
+                        <button className="btn btn-secondary" onClick={handleNuevoFormulario} disabled={loading}>
+                            Limpiar Formulario
+                        </button>
+                    </div>
+                )}
             </div>
 
             {activeTab === 'nuevo' && documentoGuardado?.numero_ajuste && (
-                <AlertMessage 
-                    texto={documentoImpreso 
-                        ? `El ajuste ${documentoGuardado.numero_ajuste} ya fue impreso; no se puede modificar.` 
-                        : `El ajuste ${documentoGuardado.numero_ajuste} fue guardado y queda pendiente de impresión.`} 
-                    tipo={documentoImpreso ? 'exito' : 'warning'} 
+                <AlertMessage
+                    texto={documentoImpreso
+                        ? `El ajuste ${documentoGuardado.numero_ajuste} ya fue impreso; no se puede modificar.`
+                        : `El ajuste ${documentoGuardado.numero_ajuste} fue guardado y queda pendiente de impresión.`}
+                    tipo={documentoImpreso ? 'exito' : 'warning'}
                 />
             )}
 
-            <AlertMessage 
-                texto={mensaje.texto} 
-                tipo={mensaje.tipo} 
-                onClose={() => setMensaje({ texto: '', tipo: '' })} 
+            <AlertMessage
+                texto={mensaje.texto}
+                tipo={mensaje.tipo}
+                onClose={() => setMensaje({ texto: '', tipo: '' })}
             />
 
             {/* TAB: NUEVO AJUSTE */}
@@ -806,7 +806,7 @@ const AjusteProductosPage = () => {
                                     registros por página
                                 </span>
                             </div>
-                            
+
                             <div className="pagination-controls">
                                 <button
                                     className="pagination-button"
@@ -913,7 +913,7 @@ const AjusteProductosPage = () => {
                             <>
                                 <div className="modal-quantity-row">
                                     <span>
-                                        <strong>{productoSeleccionado.nombre}</strong> <br/>
+                                        <strong>{productoSeleccionado.nombre}</strong> <br />
                                         <small style={{ color: 'var(--text-secondary)' }}>Código: {productoSeleccionado.codigo}</small>
                                     </span>
                                     <div className="modal-quantity-input-wrapper">

@@ -72,6 +72,17 @@ class Producto {
         return result.rows[0];
     }
 
+    static async addStock(codigo, cantidad) {
+        const query = `
+            UPDATE producto
+            SET stock_actual = stock_actual + $1
+            WHERE codigo = $2
+            RETURNING *
+        `;
+        const result = await pool.query(query, [cantidad, codigo]);
+        return result.rows[0];
+    }
+
     static async getCatalogo() {
         const query = `
             SELECT codigo, nombre, descripcion, stock_actual, pvp, graba_iva 

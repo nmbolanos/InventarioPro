@@ -191,14 +191,34 @@ body {
 .mensaje-alerta {
   padding: 12px 16px;
   border-radius: var(--border-radius);
-  margin-bottom: 20px;
   font-weight: 500;
   font-size: 14px;
-  animation: fadeIn 0.3s ease;
+  animation: slideInRight 0.4s ease, fadeIn 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.toast-modal {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  min-width: 300px;
+  max-width: 450px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 .mensaje-alerta-exito {

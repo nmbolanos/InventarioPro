@@ -155,4 +155,37 @@ router.put('/:codigo', productoController.updateProducto);
  */
 router.patch('/:codigo/desactivar', productoController.desactivarProducto);
 
+/**
+ * @swagger
+ * /api/productos/{codigo}/stock:
+ *   patch:
+ *     summary: Suma o resta stock a un producto (API de Salida para Compras/Ventas)
+ *     tags: [Productos]
+ *     parameters:
+ *       - in: path
+ *         name: codigo
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Código del producto
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               cantidad:
+ *                 type: integer
+ *                 description: Cantidad a sumar al stock actual (puede ser negativo para restar)
+ *     responses:
+ *       200:
+ *         description: Stock actualizado exitosamente
+ *       400:
+ *         description: Cantidad inválida
+ *       404:
+ *         description: Producto no encontrado
+ */
+router.patch('/:codigo/stock', productoController.addStock);
+
 module.exports = router;
