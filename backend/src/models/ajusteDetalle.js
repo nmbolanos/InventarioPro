@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 
 const bloquearSiImpreso = async (client, numeroAjuste) => {
-    const query = 'SELECT impreso FROM ajuste_cabecera WHERE numero_ajuste = $1 FOR UPDATE';
+    const query = 'SELECT * FROM ajuste_cabecera WHERE numero_ajuste = $1 FOR UPDATE';
     const { rows } = await client.query(query, [numeroAjuste]);
 
     if (rows.length === 0) {
@@ -55,7 +55,7 @@ const AjusteDetalle = {
 
     // Auxiliar para actualizar stock del producto de forma segura dentro de una transacción
     actualizarStockInterno: async (client, codigo_producto, cantidad) => {
-        const selectQuery = 'SELECT stock_actual, nombre FROM producto WHERE codigo = $1 FOR UPDATE';
+        const selectQuery = 'SELECT stock_actual, nombre, costo, pvp FROM producto WHERE codigo = $1 FOR UPDATE';
         const { rows } = await client.query(selectQuery, [codigo_producto]);
         
         if (rows.length === 0) {
@@ -72,7 +72,10 @@ const AjusteDetalle = {
         const updateQuery = 'UPDATE producto SET stock_actual = $1 WHERE codigo = $2';
         await client.query(updateQuery, [nuevoStock, codigo_producto]);
 
-        return { nuevoStock, costo: prod.costo };
+        // Usar costo del producto; si es null o 0, usar pvp como fallback
+        const costoFinal = parseFloat(prod.costo) || parseFloat(prod.pvp) || 0;
+
+        return { nuevoStock, costo: costoFinal };
     },
 
     // Crear un detalle y actualizar stock

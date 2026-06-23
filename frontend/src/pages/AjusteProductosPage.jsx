@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     getAjustesCabecera,
-    getAjusteCabeceraActual,
     getAjusteCabeceraPorId,
     crearAjusteCabecera,
     actualizarAjusteCabecera,
@@ -18,6 +17,15 @@ const AjusteProductosPage = () => {
 
     // History State
     const [historialAjustes, setHistorialAjustes] = useState([]);
+    const [activeTab, setActiveTab] = useState('nuevo'); // 'nuevo' | 'historial'
+
+    // Pagination State
+    const [paginaActual, setPaginaActual] = useState(1);
+    const [itemsPorPagina, setItemsPorPagina] = useState(10);
+
+    // Filter States
+    const [fechaDesde, setFechaDesde] = useState('');
+    const [fechaHasta, setFechaHasta] = useState('');
 
     // Form states
     const [numeroAjuste, setNumeroAjuste] = useState('AJUS-0001');
@@ -99,26 +107,13 @@ const AjusteProductosPage = () => {
         try {
             const cabecerasHistorial = await cargarHistorial();
 
-            let ajustePendiente = null;
-            try {
-                ajustePendiente = await getAjusteCabeceraActual();
-            } catch (error) {
-                if (error.response?.status !== 404) {
-                    console.error(error);
-                }
-            }
-
-            if (ajustePendiente) {
-                cargarAjusteEnFormularioLocally(ajustePendiente);
-            } else {
-                const proximoNumero = calcularSiguienteNumero(cabecerasHistorial);
-                setNumeroAjuste(proximoNumero);
-                setFecha(new Date().toISOString().substring(0, 10));
-                setDescripcion('');
-                setDetalles([]);
-                setDocumentoGuardado(null);
-                setErroresForm({});
-            }
+            const proximoNumero = calcularSiguienteNumero(cabecerasHistorial);
+            setNumeroAjuste(proximoNumero);
+            setFecha(new Date().toISOString().substring(0, 10));
+            setDescripcion('');
+            setDetalles([]);
+            setDocumentoGuardado(null);
+            setErroresForm({});
 
             try {
                 const catalogo = await getProductosCatalogo();
@@ -154,6 +149,7 @@ const AjusteProductosPage = () => {
             setDetalles([]);
             setDocumentoGuardado(null);
             setErroresForm({});
+            setActiveTab('nuevo'); // Switch to formulario tab
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } catch (err) {
             console.error(err);
@@ -168,6 +164,7 @@ const AjusteProductosPage = () => {
         try {
             const cabeceraCompleta = await getAjusteCabeceraPorId(numeroAj);
             cargarAjusteEnFormularioLocally(cabeceraCompleta);
+            setActiveTab('nuevo'); // Switch to formulario tab
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } catch (err) {
             console.error(err);
@@ -456,10 +453,27 @@ const AjusteProductosPage = () => {
         navigate('/');
     };
 
-    const productosFiltrados = productosCatalogo.filter(p =>
+    const productosFiltrados = filtroBusqueda.trim() === '' ? [] : productosCatalogo.filter(p =>
         p.codigo.toLowerCase().includes(filtroBusqueda.toLowerCase()) ||
         p.nombre.toLowerCase().includes(filtroBusqueda.toLowerCase())
     );
+
+    // Filter history list by date range
+    const historialFiltrado = historialAjustes.filter(item => {
+        if (!item.fecha) return true;
+        const fechaItem = new Date(item.fecha).toISOString().substring(0, 10);
+        
+        if (fechaDesde && fechaItem < fechaDesde) return false;
+        if (fechaHasta && fechaItem > fechaHasta) return false;
+        return true;
+    });
+
+    // Pagination calculation
+    const totalItems = historialFiltrado.length;
+    const totalPaginas = Math.ceil(totalItems / itemsPorPagina) || 1;
+    const paginaSegura = Math.min(paginaActual, totalPaginas);
+    const indiceInicio = (paginaSegura - 1) * itemsPorPagina;
+    const historialPaginado = historialFiltrado.slice(indiceInicio, indiceInicio + itemsPorPagina);
 
     const totalCantidadItems = detalles.reduce((sum, item) => sum + Math.abs(item.cantidad), 0);
     const totalSubtotal = detalles.reduce((sum, item) => sum + item.subtotal, 0);
@@ -467,31 +481,51 @@ const AjusteProductosPage = () => {
     return (
         <div className="ajuste-page-container">
             {/* =========================================
-                SECCIÓN SUPERIOR: FORMULARIO DE AJUSTE
+                SECCIÓN SUPERIOR: TÍTULO Y CABECERA GLOBAL
             ========================================= */}
             <header className="page-header">
                 <div>
-                    <h2>Documento de Ajuste</h2>
+                    <h2>Ajustes de Inventario</h2>
                     <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)' }}>
-                        {documentoImpreso ? 'Documento impreso y bloqueado' : documentoBloqueado ? 'Documento guardado, listo para imprimir' : 'Documento en edición'}
+                        {activeTab === 'nuevo' 
+                          ? (documentoImpreso ? 'Documento impreso y bloqueado' : documentoBloqueado ? 'Documento guardado, listo para imprimir' : 'Documento en edición') 
+                          : 'Historial completo de ajustes'}
                     </p>
                 </div>
-                <div className="header-actions" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <button
-                        className="btn btn-primary"
-                        onClick={handleImprimir}
-                        disabled={loading || !documentoBloqueado || documentoImpreso}
-                        title={!documentoBloqueado ? 'Primero debe guardar el documento' : documentoImpreso ? 'El documento ya fue impreso' : 'Imprimir documento en PDF'}
-                    >
-                        {documentoImpreso ? 'PDF ya impreso' : 'Imprimir PDF'}
-                    </button>
-                    <button className="btn btn-secondary" onClick={handleNuevoFormulario} disabled={loading}>
-                        Nuevo Ajuste
-                    </button>
-                </div>
+                {activeTab === 'nuevo' && (
+                    <div className="header-actions" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        <button
+                            className="btn btn-primary"
+                            onClick={handleImprimir}
+                            disabled={loading || !documentoBloqueado || documentoImpreso}
+                            title={!documentoBloqueado ? 'Primero debe guardar el documento' : documentoImpreso ? 'El documento ya fue impreso' : 'Imprimir documento en PDF'}
+                        >
+                            {documentoImpreso ? 'PDF ya impreso' : 'Imprimir PDF'}
+                        </button>
+                        <button className="btn btn-secondary" onClick={handleNuevoFormulario} disabled={loading}>
+                            Limpiar Formulario
+                        </button>
+                    </div>
+                )}
             </header>
 
-            {documentoGuardado?.numero_ajuste && (
+            {/* TABS CONTAINER */}
+            <div className="tabs-container">
+                <button
+                    className={`tab-button ${activeTab === 'nuevo' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('nuevo')}
+                >
+                    Nuevo / Editar Ajuste
+                </button>
+                <button
+                    className={`tab-button ${activeTab === 'historial' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('historial')}
+                >
+                    Historial de Ajustes
+                </button>
+            </div>
+
+            {activeTab === 'nuevo' && documentoGuardado?.numero_ajuste && (
                 <div className={`mensaje-alerta ${documentoImpreso ? 'mensaje-alerta-exito' : 'mensaje-alerta-error'}`}>
                     {documentoImpreso
                         ? `El ajuste ${documentoGuardado.numero_ajuste} ya fue impreso; no se puede modificar.`
@@ -505,216 +539,324 @@ const AjusteProductosPage = () => {
                 </div>
             )}
 
-            {/* CABECERA FORM */}
-            <div className="ajuste-card">
-                <h3>Cabecera de Ajuste</h3>
-                <div className="form-grid-3">
-                    <div className="form-group">
-                        <label>Número de Ajuste</label>
-                        <input
-                            type="text"
-                            value={numeroAjuste}
-                            readOnly
-                            className="readonly-input"
-                            disabled={documentoBloqueado}
-                        />
+            {/* TAB: NUEVO AJUSTE */}
+            {activeTab === 'nuevo' && (
+                <>
+                    {/* CABECERA FORM */}
+                    <div className="ajuste-card">
+                        <h3>Cabecera de Ajuste</h3>
+                        <div className="form-grid-3">
+                            <div className="form-group">
+                                <label>Número de Ajuste</label>
+                                <input
+                                    type="text"
+                                    value={numeroAjuste}
+                                    readOnly
+                                    className="readonly-input"
+                                    disabled={documentoBloqueado}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Fecha</label>
+                                <input
+                                    type="date"
+                                    value={fecha}
+                                    onChange={(e) => setFecha(e.target.value)}
+                                    disabled={documentoBloqueado}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Descripción *</label>
+                                <input
+                                    type="text"
+                                    placeholder="Ingrese el motivo de ajuste..."
+                                    value={descripcion}
+                                    onChange={(e) => setDescripcion(e.target.value)}
+                                    className={erroresForm.descripcion ? 'input-error' : ''}
+                                    disabled={documentoBloqueado}
+                                />
+                                {erroresForm.descripcion && <span className="error-text">{erroresForm.descripcion}</span>}
+                            </div>
+                        </div>
                     </div>
-                    <div className="form-group">
-                        <label>Fecha</label>
-                        <input
-                            type="date"
-                            value={fecha}
-                            onChange={(e) => setFecha(e.target.value)}
-                            disabled={documentoBloqueado}
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label>Descripción *</label>
-                        <input
-                            type="text"
-                            placeholder="Ingrese el motivo de ajuste..."
-                            value={descripcion}
-                            onChange={(e) => setDescripcion(e.target.value)}
-                            className={erroresForm.descripcion ? 'input-error' : ''}
-                            disabled={documentoBloqueado}
-                        />
-                        {erroresForm.descripcion && <span className="error-text">{erroresForm.descripcion}</span>}
-                    </div>
-                </div>
-            </div>
 
-            {/* DETALLES TABLE */}
-            <div className="ajuste-card">
-                <div className="details-header">
-                    <h3>Detalle de Ajuste</h3>
-                    <button className="btn btn-primary" onClick={handleOpenModal} disabled={documentoBloqueado}>
-                        + Agregar Producto
-                    </button>
-                </div>
+                    {/* DETALLES TABLE */}
+                    <div className="ajuste-card">
+                        <div className="details-header">
+                            <h3>Detalle de Ajuste</h3>
+                            <button className="btn btn-primary" onClick={handleOpenModal} disabled={documentoBloqueado}>
+                                + Agregar Producto
+                            </button>
+                        </div>
 
-                {erroresForm.detalles && (
-                    <div className="mensaje-alerta mensaje-alerta-error" style={{ padding: '8px 12px', fontSize: '13px' }}>
-                        {erroresForm.detalles}
+                        {erroresForm.detalles && (
+                            <div className="mensaje-alerta mensaje-alerta-error" style={{ padding: '8px 12px', fontSize: '13px' }}>
+                                {erroresForm.detalles}
+                            </div>
+                        )}
+
+                        <div style={{ overflowX: 'auto' }}>
+                            <table className="modern-table">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Producto</th>
+                                        <th>Stock Actual</th>
+                                        <th>PVP</th>
+                                        <th>IVA</th>
+                                        <th>Cantidad</th>
+                                        <th>Stock Resultante</th>
+                                        <th>Subtotal</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {detalles.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="9" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                                No se han agregado productos al ajuste. Presione "Agregar Producto" para iniciar.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        detalles.map((item, index) => (
+                                            <tr key={`${item.codigo}-${index}`}>
+                                                <td>{item.codigo}</td>
+                                                <td>{item.nombre}</td>
+                                                <td>{item.stock_actual}</td>
+                                                <td>${item.pvp.toFixed(2)}</td>
+                                                <td>
+                                                    <span className={`badge ${item.graba_iva ? 'badge-active' : 'badge-inactive'}`}>
+                                                        {item.graba_iva ? `${item.porcentaje_iva_aplicado}%` : '0%'}
+                                                    </span>
+                                                </td>
+                                                <td style={{ fontWeight: 'bold', color: item.cantidad < 0 ? 'var(--error-color)' : 'var(--primary-hover)' }}>
+                                                    {item.cantidad > 0 ? `+${item.cantidad}` : item.cantidad}
+                                                </td>
+                                                <td>{item.stock_resultante}</td>
+                                                <td>${item.subtotal.toFixed(2)}</td>
+                                                <td>
+                                                    <button
+                                                        className="btn-danger-outline"
+                                                        onClick={() => handleEliminarDetalle(item.codigo)}
+                                                        disabled={documentoBloqueado}
+                                                    >
+                                                        Eliminar
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {detalles.length > 0 && (
+                            <div className="total-summary-bar">
+                                <div className="summary-item">
+                                    Cantidad Ajustada: <strong>{totalCantidadItems} unidades</strong>
+                                </div>
+                                <div className="summary-item">
+                                    Total Subtotal: <strong>${totalSubtotal.toFixed(2)}</strong>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                )}
 
-                <div style={{ overflowX: 'auto' }}>
-                    <table className="modern-table">
-                        <thead>
-                            <tr>
-                                <th>Código</th>
-                                <th>Producto</th>
-                                <th>Stock Actual</th>
-                                <th>PVP</th>
-                                <th>IVA</th>
-                                <th>Cantidad</th>
-                                <th>Stock Resultante</th>
-                                <th>Subtotal</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {detalles.length === 0 ? (
+                    {/* ACCIONES FORMULARIO MAESTRO */}
+                    <div className="page-actions">
+                        <button className="btn btn-secondary" onClick={handleCancelar} disabled={loading}>
+                            Cancelar
+                        </button>
+                        <button className="btn btn-primary" onClick={handleGuardar} disabled={loading || documentoBloqueado}>
+                            {loading ? 'Guardando...' : 'Guardar Ajuste'}
+                        </button>
+                    </div>
+                </>
+            )}
+
+            {/* TAB: HISTORIAL */}
+            {activeTab === 'historial' && (
+                <div className="ajuste-card historial-section">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <h3 style={{ margin: 0 }}>Historial de Ajustes</h3>
+                        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+                            Consulte y edite los ajustes de inventario registrados
+                        </p>
+                    </div>
+
+                    {/* FILTROS DE RANGO DE FECHA */}
+                    <div className="filters-grid">
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ fontSize: '14px', marginBottom: '4px', display: 'block' }}>Fecha Desde</label>
+                            <input
+                                type="date"
+                                value={fechaDesde}
+                                onChange={(e) => { setFechaDesde(e.target.value); setPaginaActual(1); }}
+                            />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ fontSize: '14px', marginBottom: '4px', display: 'block' }}>Fecha Hasta</label>
+                            <input
+                                type="date"
+                                value={fechaHasta}
+                                onChange={(e) => { setFechaHasta(e.target.value); setPaginaActual(1); }}
+                            />
+                        </div>
+                        <button
+                            className="btn btn-secondary"
+                            onClick={() => {
+                                setFechaDesde('');
+                                setFechaHasta('');
+                                setPaginaActual(1);
+                            }}
+                            disabled={!fechaDesde && !fechaHasta}
+                        >
+                            Limpiar Filtros
+                        </button>
+                    </div>
+
+                    <div style={{ overflowX: 'auto', marginTop: '15px' }}>
+                        <table className="modern-table">
+                            <thead>
                                 <tr>
-                                    <td colSpan="9" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                        No se han agregado productos al ajuste. Presione "Agregar Producto" para iniciar.
-                                    </td>
+                                    <th>Número</th>
+                                    <th>Fecha</th>
+                                    <th>Descripción</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
                                 </tr>
-                            ) : (
-                                detalles.map((item, index) => (
-                                    <tr key={`${item.codigo}-${index}`}>
-                                        <td>{item.codigo}</td>
-                                        <td>{item.nombre}</td>
-                                        <td>{item.stock_actual}</td>
-                                        <td>${item.pvp.toFixed(2)}</td>
-                                        <td>
-                                            <span className={`badge ${item.graba_iva ? 'badge-active' : 'badge-inactive'}`}>
-                                                {item.graba_iva ? `${item.porcentaje_iva_aplicado}%` : '0%'}
-                                            </span>
-                                        </td>
-                                        <td style={{ fontWeight: 'bold', color: item.cantidad < 0 ? 'var(--error-color)' : 'var(--primary-hover)' }}>
-                                            {item.cantidad > 0 ? `+${item.cantidad}` : item.cantidad}
-                                        </td>
-                                        <td>{item.stock_resultante}</td>
-                                        <td>${item.subtotal.toFixed(2)}</td>
-                                        <td>
-                                            <button
-                                                className="btn-danger-outline"
-                                                onClick={() => handleEliminarDetalle(item.codigo)}
-                                                disabled={documentoBloqueado}
-                                            >
-                                                Eliminar
-                                            </button>
+                            </thead>
+                            <tbody>
+                                {historialPaginado.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px' }}>
+                                            No se encontraron ajustes con los filtros seleccionados.
                                         </td>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-
-                {detalles.length > 0 && (
-                    <div className="total-summary-bar">
-                        <div className="summary-item">
-                            Cantidad Ajustada: <strong>{totalCantidadItems} unidades</strong>
-                        </div>
-                        <div className="summary-item">
-                            Total Subtotal: <strong>${totalSubtotal.toFixed(2)}</strong>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* ACCIONES FORMULARIO MAESTRO */}
-            <div className="page-actions">
-                <button className="btn btn-secondary" onClick={handleCancelar} disabled={loading}>
-                    Cancelar
-                </button>
-                <button className="btn btn-primary" onClick={handleGuardar} disabled={loading || documentoBloqueado}>
-                    {loading ? 'Guardando...' : 'Guardar Ajuste'}
-                </button>
-            </div>
-
-            <hr style={{ margin: '40px 0', borderColor: 'var(--border-color)', borderStyle: 'solid', borderWidth: '1px 0 0 0' }} />
-
-            {/* =========================================
-                SECCIÓN INFERIOR: HISTORIAL DE AJUSTES
-            ========================================= */}
-            <div className="ajuste-card historial-section">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                    <h3 style={{ margin: 0 }}>Historial de Ajustes</h3>
-                    <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
-                        Histórico completo de movimientos realizados
-                    </p>
-                </div>
-
-                <div style={{ overflowX: 'auto' }}>
-                    <table className="modern-table">
-                        <thead>
-                            <tr>
-                                <th>Número</th>
-                                <th>Fecha</th>
-                                <th>Descripción</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {historialAjustes.length === 0 ? (
-                                <tr>
-                                    <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                        No hay ajustes registrados en el historial.
-                                    </td>
-                                </tr>
-                            ) : (
-                                historialAjustes.map((item) => (
-                                    <tr key={item.numero_ajuste}>
-                                        <td style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
-                                            {item.numero_ajuste}
-                                        </td>
-                                        <td>{new Date(item.fecha).toLocaleDateString('es-EC')}</td>
-                                        <td>{item.descripcion}</td>
-                                        <td>
-                                            <div style={{ display: 'flex', gap: '8px' }}>
-                                                <button
-                                                    className="btn btn-secondary"
-                                                    style={{ padding: '4px 8px', fontSize: '12px' }}
-                                                    onClick={() => handleVerDetalles(item.numero_ajuste)}
-                                                    disabled={loading}
-                                                >
-                                                    Detalles
-                                                </button>
-                                                {!item.impreso && (
+                                ) : (
+                                    historialPaginado.map((item) => (
+                                        <tr key={item.numero_ajuste}>
+                                            <td style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
+                                                {item.numero_ajuste}
+                                            </td>
+                                            <td>{new Date(item.fecha).toLocaleDateString('es-EC')}</td>
+                                            <td>{item.descripcion}</td>
+                                            <td>
+                                                <span className={`badge ${item.impreso ? 'badge-active' : 'badge-inactive'}`} style={{ backgroundColor: item.impreso ? '#d4edda' : '#fff3cd', color: item.impreso ? '#155724' : '#856404' }}>
+                                                    {item.impreso ? 'Impreso (Bloqueado)' : 'Borrador'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
                                                     <button
                                                         className="btn btn-secondary"
                                                         style={{ padding: '4px 8px', fontSize: '12px' }}
-                                                        onClick={() => handleEditarAjuste(item.numero_ajuste)}
+                                                        onClick={() => handleVerDetalles(item.numero_ajuste)}
                                                         disabled={loading}
                                                     >
-                                                        Editar
+                                                        Detalles
                                                     </button>
-                                                )}
-                                                <button
-                                                    className="btn btn-primary"
-                                                    style={{ padding: '4px 8px', fontSize: '12px' }}
-                                                    onClick={() => handleImprimirDesdeLista(item.numero_ajuste)}
-                                                    disabled={loading}
-                                                >
-                                                    {item.impreso ? 'Imprimir PDF' : 'Imprimir'}
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                                                    {!item.impreso && (
+                                                        <button
+                                                            className="btn btn-secondary"
+                                                            style={{ padding: '4px 8px', fontSize: '12px' }}
+                                                            onClick={() => handleEditarAjuste(item.numero_ajuste)}
+                                                            disabled={loading}
+                                                        >
+                                                            Editar
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        className="btn btn-primary"
+                                                        style={{ padding: '4px 8px', fontSize: '12px' }}
+                                                        onClick={() => handleImprimirDesdeLista(item.numero_ajuste)}
+                                                        disabled={loading}
+                                                    >
+                                                        {item.impreso ? 'Imprimir PDF' : 'Imprimir'}
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* CONTROLES DE PAGINACIÓN */}
+                    {totalItems > 0 && (
+                        <div className="pagination-container">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                                    Mostrar
+                                </span>
+                                <select
+                                    value={itemsPorPagina}
+                                    onChange={(e) => { setItemsPorPagina(Number(e.target.value)); setPaginaActual(1); }}
+                                    style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}
+                                >
+                                    <option value={5}>5</option>
+                                    <option value={10}>10</option>
+                                    <option value={20}>20</option>
+                                    <option value={50}>50</option>
+                                </select>
+                                <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                                    registros por página
+                                </span>
+                            </div>
+                            
+                            <div className="pagination-controls">
+                                <button
+                                    className="pagination-button"
+                                    onClick={() => setPaginaActual(1)}
+                                    disabled={paginaActual === 1}
+                                >
+                                    «
+                                </button>
+                                <button
+                                    className="pagination-button"
+                                    onClick={() => setPaginaActual(p => Math.max(p - 1, 1))}
+                                    disabled={paginaActual === 1}
+                                >
+                                    Anterior
+                                </button>
+                                {Array.from({ length: totalPaginas }, (_, idx) => idx + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        className={`pagination-button ${paginaActual === page ? 'active' : ''}`}
+                                        onClick={() => setPaginaActual(page)}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+                                <button
+                                    className="pagination-button"
+                                    onClick={() => setPaginaActual(p => Math.min(p + 1, totalPaginas))}
+                                    disabled={paginaActual === totalPaginas}
+                                >
+                                    Siguiente
+                                </button>
+                                <button
+                                    className="pagination-button"
+                                    onClick={() => setPaginaActual(totalPaginas)}
+                                    disabled={paginaActual === totalPaginas}
+                                >
+                                    »
+                                </button>
+                            </div>
+
+                            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                                Mostrando {indiceInicio + 1} a {Math.min(indiceInicio + itemsPorPagina, totalItems)} de {totalItems} registros
+                            </span>
+                        </div>
+                    )}
                 </div>
-            </div>
+            )}
 
             {/* MODAL AGREGAR PRODUCTO */}
             {showModal && (
                 <div className="modal-overlay">
-                    <div className="modal-content card" style={{ maxWidth: '500px' }}>
+                    <div className="modal-content card" style={{ maxWidth: '520px' }}>
                         <h3 style={{ color: 'var(--primary-hover)', marginTop: 0 }}>Agregar Producto al Detalle</h3>
 
                         {errorModal && (
@@ -732,81 +874,88 @@ const AjusteProductosPage = () => {
                                 value={filtroBusqueda}
                                 onChange={(e) => setFiltroBusqueda(e.target.value)}
                                 disabled={documentoBloqueado}
+                                autoFocus
                             />
                         </div>
 
                         {/* Listar productos */}
-                        <label className="form-group" style={{ display: 'block', fontSize: '14px', marginBottom: '5px', color: 'var(--text-secondary)' }}>
-                            Seleccione un Producto *
-                        </label>
-                        <div className="product-list-container">
-                            {productosFiltrados.length === 0 ? (
-                                <div style={{ padding: '15px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                    No se encontraron productos activos.
+                        {filtroBusqueda.trim() !== '' && (
+                            <>
+                                <label className="form-group" style={{ display: 'block', fontSize: '14px', marginBottom: '5px', color: 'var(--text-secondary)' }}>
+                                    Seleccione un Producto *
+                                </label>
+                                <div className="product-list-container">
+                                    {productosFiltrados.length === 0 ? (
+                                        <div style={{ padding: '15px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                            No se encontraron productos coincidentes.
+                                        </div>
+                                    ) : (
+                                        productosFiltrados.map((prod) => (
+                                            <div
+                                                key={prod.codigo}
+                                                className={`product-list-item ${productoSeleccionado?.codigo === prod.codigo ? 'selected' : ''}`}
+                                                onClick={() => handleSeleccionarProducto(prod)}
+                                            >
+                                                <span className="product-list-item-code">{prod.codigo}</span>
+                                                <span className="product-list-item-name">{prod.nombre}</span>
+                                                <span className="product-list-item-stock">Stock: {prod.stock_actual}</span>
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
-                            ) : (
-                                productosFiltrados.map((prod) => (
-                                    <div
-                                        key={prod.codigo}
-                                        className={`product-list-item ${productoSeleccionado?.codigo === prod.codigo ? 'selected' : ''}`}
-                                        onClick={() => handleSeleccionarProducto(prod)}
-                                    >
-                                        <span className="product-list-item-code">{prod.codigo}</span>
-                                        <span className="product-list-item-name">{prod.nombre}</span>
-                                        <span className="product-list-item-stock">Stock: {prod.stock_actual}</span>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-
-                        {/* Mostrar Info del Producto Seleccionado */}
-                        {productoSeleccionado && (
-                            <div className="selected-product-info">
-                                <strong style={{ color: 'var(--secondary-color)' }}>Datos de Referencia:</strong>
-                                <div className="info-grid-2">
-                                    <div>
-                                        <span className="info-label">Código:</span> <span className="info-value">{productoSeleccionado.codigo}</span>
-                                    </div>
-                                    <div>
-                                        <span className="info-label">Nombre:</span> <span className="info-value">{productoSeleccionado.nombre}</span>
-                                    </div>
-                                    <div>
-                                        <span className="info-label">Stock Actual:</span> <span className="info-value">{productoSeleccionado.stock_actual}</span>
-                                    </div>
-                                    <div>
-                                        <span className="info-label">PVP:</span> <span className="info-value">${parseFloat(productoSeleccionado.pvp).toFixed(2)}</span>
-                                    </div>
-                                    <div>
-                                        <span className="info-label">Graba IVA:</span> <span className="info-value">{productoSeleccionado.graba_iva ? 'Sí' : 'No'}</span>
-                                    </div>
-                                    <div>
-                                        <span className="info-label">IVA Aplicado:</span> <span className="info-value">{productoSeleccionado.graba_iva ? `${productoSeleccionado.porcentaje_iva_aplicado || 0}%` : '0%'}</span>
-                                    </div>
-                                </div>
-                            </div>
+                            </>
                         )}
 
-                        {/* Campo cantidad */}
-                        <div className="form-group">
-                            <label>Cantidad a Ajustar *</label>
-                            <input
-                                type="number"
-                                placeholder="Ej: 5 para ingreso, -3 para egreso"
-                                value={cantidadModal}
-                                onChange={(e) => setCantidadModal(e.target.value)}
-                                disabled={!productoSeleccionado || documentoBloqueado}
-                            />
-                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginTop: '4px' }}>
-                                Use valores positivos para incrementar stock y negativos para decrementarlo.
-                            </span>
-                        </div>
+                        {/* Mostrar Info del Producto Seleccionado y Cantidad en línea */}
+                        {productoSeleccionado && (
+                            <>
+                                <div className="modal-quantity-row">
+                                    <span>
+                                        <strong>{productoSeleccionado.nombre}</strong> <br/>
+                                        <small style={{ color: 'var(--text-secondary)' }}>Código: {productoSeleccionado.codigo}</small>
+                                    </span>
+                                    <div className="modal-quantity-input-wrapper">
+                                        <label htmlFor="cantidad-modal-input">Cant:</label>
+                                        <input
+                                            id="cantidad-modal-input"
+                                            type="number"
+                                            placeholder="Cant."
+                                            value={cantidadModal}
+                                            onChange={(e) => setCantidadModal(e.target.value)}
+                                            disabled={documentoBloqueado}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="selected-product-info" style={{ marginTop: '10px' }}>
+                                    <strong style={{ color: 'var(--secondary-color)' }}>Datos de Referencia:</strong>
+                                    <div className="info-grid-2">
+                                        <div>
+                                            <span className="info-label">Stock Actual:</span> <span className="info-value">{productoSeleccionado.stock_actual}</span>
+                                        </div>
+                                        <div>
+                                            <span className="info-label">PVP:</span> <span className="info-value">${parseFloat(productoSeleccionado.pvp).toFixed(2)}</span>
+                                        </div>
+                                        <div>
+                                            <span className="info-label">Graba IVA:</span> <span className="info-value">{productoSeleccionado.graba_iva ? 'Sí' : 'No'}</span>
+                                        </div>
+                                        <div>
+                                            <span className="info-label">IVA Aplicado:</span> <span className="info-value">{productoSeleccionado.graba_iva ? `${productoSeleccionado.porcentaje_iva_aplicado || 0}%` : '0%'}</span>
+                                        </div>
+                                    </div>
+                                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginTop: '8px' }}>
+                                        Use valores positivos para ingresar stock y negativos para egresarlo.
+                                    </span>
+                                </div>
+                            </>
+                        )}
 
                         <div className="modal-actions">
                             <button className="btn btn-secondary" onClick={handleCloseModal}>
                                 Cancelar
                             </button>
                             <button className="btn btn-primary" onClick={handleAgregarDetalle} disabled={!productoSeleccionado || documentoBloqueado}>
-                                Agregar
+                                Agregar al detalle
                             </button>
                         </div>
                     </div>
