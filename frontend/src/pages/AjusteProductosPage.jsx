@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-    getAjustesCabecera, 
+import {
+    getAjustesCabecera,
     getAjusteCabeceraActual,
     getAjusteCabeceraPorId,
-    crearAjusteCabecera, 
+    crearAjusteCabecera,
     actualizarAjusteCabecera,
-    crearAjusteDetalle, 
+    crearAjusteDetalle,
     eliminarAjusteDetalle,
     getProductosCatalogo,
     imprimirAjuste
@@ -43,7 +43,7 @@ const AjusteProductosPage = () => {
 
     const calcularSiguienteNumero = (cabeceras) => {
         if (!cabeceras || cabeceras.length === 0) return 'AJUS-0001';
-        
+
         const numeros = cabeceras.map(c => {
             const partes = c.numero_ajuste.split('-');
             if (partes.length === 2 && !isNaN(partes[1])) {
@@ -51,7 +51,7 @@ const AjusteProductosPage = () => {
             }
             return 0;
         });
-        
+
         const max = Math.max(...numeros);
         const siguiente = max + 1;
         return `AJUS-${String(siguiente).padStart(4, '0')}`;
@@ -128,9 +128,9 @@ const AjusteProductosPage = () => {
             }
         } catch (err) {
             console.error(err);
-            setMensaje({ 
-                texto: 'Error al conectar con el servidor. Verifique si el backend está en ejecución.', 
-                tipo: 'error' 
+            setMensaje({
+                texto: 'Error al conectar con el servidor. Verifique si el backend está en ejecución.',
+                tipo: 'error'
             });
         } finally {
             setLoading(false);
@@ -187,7 +187,7 @@ const AjusteProductosPage = () => {
             window.open(url, '_blank', 'noopener,noreferrer');
             setMensaje({ texto: `Documento ${numeroAj} impreso y bloqueado correctamente.`, tipo: 'exito' });
             setTimeout(() => window.URL.revokeObjectURL(url), 10000);
-            
+
             await cargarHistorial(); // Refrescar lista
 
             // Si el ajuste que se acaba de imprimir es el que está abierto en el formulario, 
@@ -226,14 +226,14 @@ const AjusteProductosPage = () => {
         setFiltroBusqueda('');
         setProductoSeleccionado(null);
         setCantidadModal('');
-        
+
         try {
             const catalogo = await getProductosCatalogo();
             setProductosCatalogo(catalogo);
         } catch (err) {
             console.error('Error al actualizar catálogo de productos:', err);
         }
-        
+
         setShowModal(true);
     };
 
@@ -329,24 +329,34 @@ const AjusteProductosPage = () => {
         setErroresForm({});
         setLoading(true);
 
+        const datosCabecera = {
+            descripcion: descripcion.trim(),
+            fecha: new Date(fecha).toISOString(),
+            impreso: false
+        };
+
+        // Preparamos los datos de detalle para los logs (con numero_ajuste temporal/pendiente)
+        const datosDetalleLog = detalles.map(item => ({
+            codigo_producto: item.codigo,
+            cantidad: item.cantidad
+        }));
+
+        console.log("=== DATOS DE CABECERA ENVIADOS ===", datosCabecera);
+        console.log("=== DATOS DE DETALLE ENVIADOS ===", datosDetalleLog);
+
         try {
             if (documentoGuardado) {
                 // Modo Edición: Actualizar cabecera
-                await actualizarAjusteCabecera(documentoGuardado.numero_ajuste, {
-                    descripcion: descripcion.trim(),
-                    fecha: new Date(fecha).toISOString(),
-                    impreso: false
-                });
+                await actualizarAjusteCabecera(documentoGuardado.numero_ajuste, datosCabecera);
 
                 // Crear solo los detalles que no han sido guardados
                 const detallesNuevos = detalles.filter(d => !d.id_detalle);
                 for (const item of detallesNuevos) {
-                    const res = await crearAjusteDetalle({
+                    await crearAjusteDetalle({
                         numero_ajuste: documentoGuardado.numero_ajuste,
                         codigo_producto: item.codigo,
                         cantidad: item.cantidad
                     });
-                    item.id_detalle = res.id_detalle;
                 }
 
                 setMensaje({
@@ -366,13 +376,10 @@ const AjusteProductosPage = () => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {
                 // Modo Creación
-                const cabeceraCreada = await crearAjusteCabecera({
-                    descripcion: descripcion.trim(),
-                    fecha: new Date(fecha).toISOString(),
-                    impreso: false
-                });
+                const cabeceraCreada = await crearAjusteCabecera(datosCabecera);
 
                 const nroAjusteReal = cabeceraCreada.numero_ajuste;
+                const detallesConId = [];
 
                 for (const item of detalles) {
                     const res = await crearAjusteDetalle({
@@ -380,14 +387,17 @@ const AjusteProductosPage = () => {
                         codigo_producto: item.codigo,
                         cantidad: item.cantidad
                     });
-                    item.id_detalle = res.id_detalle;
+                    detallesConId.push({
+                        ...item,
+                        id_detalle: res.id_detalle
+                    });
                 }
+
+                setDetalles(detallesConId);
 
                 setDocumentoGuardado({
                     numero_ajuste: nroAjusteReal,
-                    descripcion: descripcion.trim(),
-                    fecha: new Date(fecha).toISOString(),
-                    impreso: false
+                    ...datosCabecera
                 });
 
                 setMensaje({
@@ -398,7 +408,16 @@ const AjusteProductosPage = () => {
                 await cargarHistorial(); // Refrescar lista con el documento actualizado
             }
         } catch (error) {
-            const msgError = error.response?.data?.mensaje || error.response?.data?.error || error.message;
+            console.error("=== ERROR EN EL BACKEND ===", error);
+            const responseData = error.response?.data;
+            let msgError = error.message;
+            if (responseData) {
+                if (responseData.mensaje && responseData.error) {
+                    msgError = `${responseData.mensaje}: ${responseData.error}`;
+                } else {
+                    msgError = responseData.mensaje || responseData.error || error.message;
+                }
+            }
             setMensaje({
                 texto: `Error al registrar el ajuste: ${msgError}`,
                 tipo: 'error'
@@ -423,7 +442,7 @@ const AjusteProductosPage = () => {
             setDocumentoGuardado((actual) => ({ ...(actual || {}), impreso: true }));
             setMensaje({ texto: `Documento ${documentoGuardado.numero_ajuste} impreso y bloqueado correctamente.`, tipo: 'exito' });
             setTimeout(() => window.URL.revokeObjectURL(url), 10000);
-            
+
             await cargarHistorial(); // Refrescar lista para que aparezca como impreso
         } catch (error) {
             const msgError = error.response?.data?.mensaje || error.response?.data?.error || error.message;
@@ -437,8 +456,8 @@ const AjusteProductosPage = () => {
         navigate('/');
     };
 
-    const productosFiltrados = productosCatalogo.filter(p => 
-        p.codigo.toLowerCase().includes(filtroBusqueda.toLowerCase()) || 
+    const productosFiltrados = productosCatalogo.filter(p =>
+        p.codigo.toLowerCase().includes(filtroBusqueda.toLowerCase()) ||
         p.nombre.toLowerCase().includes(filtroBusqueda.toLowerCase())
     );
 
@@ -492,29 +511,29 @@ const AjusteProductosPage = () => {
                 <div className="form-grid-3">
                     <div className="form-group">
                         <label>Número de Ajuste</label>
-                        <input 
-                            type="text" 
-                            value={numeroAjuste} 
-                            readOnly 
+                        <input
+                            type="text"
+                            value={numeroAjuste}
+                            readOnly
                             className="readonly-input"
                             disabled={documentoBloqueado}
                         />
                     </div>
                     <div className="form-group">
                         <label>Fecha</label>
-                        <input 
-                            type="date" 
-                            value={fecha} 
+                        <input
+                            type="date"
+                            value={fecha}
                             onChange={(e) => setFecha(e.target.value)}
                             disabled={documentoBloqueado}
                         />
                     </div>
                     <div className="form-group">
                         <label>Descripción *</label>
-                        <input 
-                            type="text" 
-                            placeholder="Ingrese el motivo de ajuste..." 
-                            value={descripcion} 
+                        <input
+                            type="text"
+                            placeholder="Ingrese el motivo de ajuste..."
+                            value={descripcion}
                             onChange={(e) => setDescripcion(e.target.value)}
                             className={erroresForm.descripcion ? 'input-error' : ''}
                             disabled={documentoBloqueado}
@@ -579,8 +598,8 @@ const AjusteProductosPage = () => {
                                         <td>{item.stock_resultante}</td>
                                         <td>${item.subtotal.toFixed(2)}</td>
                                         <td>
-                                            <button 
-                                                className="btn-danger-outline" 
+                                            <button
+                                                className="btn-danger-outline"
                                                 onClick={() => handleEliminarDetalle(item.codigo)}
                                                 disabled={documentoBloqueado}
                                             >
@@ -628,7 +647,7 @@ const AjusteProductosPage = () => {
                         Histórico completo de movimientos realizados
                     </p>
                 </div>
-                
+
                 <div style={{ overflowX: 'auto' }}>
                     <table className="modern-table">
                         <thead>
@@ -656,8 +675,8 @@ const AjusteProductosPage = () => {
                                         <td>{item.descripcion}</td>
                                         <td>
                                             <div style={{ display: 'flex', gap: '8px' }}>
-                                                <button 
-                                                    className="btn btn-secondary" 
+                                                <button
+                                                    className="btn btn-secondary"
                                                     style={{ padding: '4px 8px', fontSize: '12px' }}
                                                     onClick={() => handleVerDetalles(item.numero_ajuste)}
                                                     disabled={loading}
@@ -665,8 +684,8 @@ const AjusteProductosPage = () => {
                                                     Detalles
                                                 </button>
                                                 {!item.impreso && (
-                                                    <button 
-                                                        className="btn btn-secondary" 
+                                                    <button
+                                                        className="btn btn-secondary"
                                                         style={{ padding: '4px 8px', fontSize: '12px' }}
                                                         onClick={() => handleEditarAjuste(item.numero_ajuste)}
                                                         disabled={loading}
@@ -674,8 +693,8 @@ const AjusteProductosPage = () => {
                                                         Editar
                                                     </button>
                                                 )}
-                                                <button 
-                                                    className="btn btn-primary" 
+                                                <button
+                                                    className="btn btn-primary"
                                                     style={{ padding: '4px 8px', fontSize: '12px' }}
                                                     onClick={() => handleImprimirDesdeLista(item.numero_ajuste)}
                                                     disabled={loading}
@@ -697,7 +716,7 @@ const AjusteProductosPage = () => {
                 <div className="modal-overlay">
                     <div className="modal-content card" style={{ maxWidth: '500px' }}>
                         <h3 style={{ color: 'var(--primary-hover)', marginTop: 0 }}>Agregar Producto al Detalle</h3>
-                        
+
                         {errorModal && (
                             <div className="mensaje-alerta mensaje-alerta-error" style={{ padding: '8px 12px', fontSize: '13px', marginBottom: '15px' }}>
                                 {errorModal}
@@ -707,10 +726,10 @@ const AjusteProductosPage = () => {
                         {/* Buscador */}
                         <div className="form-group modal-product-search">
                             <label>Buscar Producto</label>
-                            <input 
-                                type="text" 
-                                placeholder="Escriba código o nombre del producto..." 
-                                value={filtroBusqueda} 
+                            <input
+                                type="text"
+                                placeholder="Escriba código o nombre del producto..."
+                                value={filtroBusqueda}
                                 onChange={(e) => setFiltroBusqueda(e.target.value)}
                                 disabled={documentoBloqueado}
                             />
@@ -727,8 +746,8 @@ const AjusteProductosPage = () => {
                                 </div>
                             ) : (
                                 productosFiltrados.map((prod) => (
-                                    <div 
-                                        key={prod.codigo} 
+                                    <div
+                                        key={prod.codigo}
                                         className={`product-list-item ${productoSeleccionado?.codigo === prod.codigo ? 'selected' : ''}`}
                                         onClick={() => handleSeleccionarProducto(prod)}
                                     >
@@ -770,12 +789,12 @@ const AjusteProductosPage = () => {
                         {/* Campo cantidad */}
                         <div className="form-group">
                             <label>Cantidad a Ajustar *</label>
-                            <input 
-                                type="number" 
-                                placeholder="Ej: 5 para ingreso, -3 para egreso" 
-                                value={cantidadModal} 
+                            <input
+                                type="number"
+                                placeholder="Ej: 5 para ingreso, -3 para egreso"
+                                value={cantidadModal}
                                 onChange={(e) => setCantidadModal(e.target.value)}
-                                    disabled={!productoSeleccionado || documentoBloqueado}
+                                disabled={!productoSeleccionado || documentoBloqueado}
                             />
                             <span style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginTop: '4px' }}>
                                 Use valores positivos para incrementar stock y negativos para decrementarlo.
@@ -807,8 +826,8 @@ const AjusteProductosPage = () => {
                             </button>
                         </div>
                         <div style={{ marginBottom: '15px' }}>
-                            <strong>Fecha:</strong> {new Date(ajusteDetallesView.fecha).toLocaleDateString('es-EC')} <br/>
-                            <strong>Descripción:</strong> {ajusteDetallesView.descripcion} <br/>
+                            <strong>Fecha:</strong> {new Date(ajusteDetallesView.fecha).toLocaleDateString('es-EC')} <br />
+                            <strong>Descripción:</strong> {ajusteDetallesView.descripcion} <br />
                         </div>
                         <div style={{ overflowX: 'auto' }}>
                             <table className="modern-table">
