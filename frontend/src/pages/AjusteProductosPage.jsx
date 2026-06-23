@@ -10,6 +10,7 @@ import {
     getProductosCatalogo,
     imprimirAjuste
 } from '../services/ajusteService';
+import AlertMessage from '../components/AlertMessage';
 import './AjusteProductosPage.css';
 
 const AjusteProductosPage = () => {
@@ -526,18 +527,19 @@ const AjusteProductosPage = () => {
             </div>
 
             {activeTab === 'nuevo' && documentoGuardado?.numero_ajuste && (
-                <div className={`mensaje-alerta ${documentoImpreso ? 'mensaje-alerta-exito' : 'mensaje-alerta-error'}`}>
-                    {documentoImpreso
-                        ? `El ajuste ${documentoGuardado.numero_ajuste} ya fue impreso; no se puede modificar.`
-                        : `El ajuste ${documentoGuardado.numero_ajuste} fue guardado y queda pendiente de impresión.`}
-                </div>
+                <AlertMessage 
+                    texto={documentoImpreso 
+                        ? `El ajuste ${documentoGuardado.numero_ajuste} ya fue impreso; no se puede modificar.` 
+                        : `El ajuste ${documentoGuardado.numero_ajuste} fue guardado y queda pendiente de impresión.`} 
+                    tipo={documentoImpreso ? 'exito' : 'warning'} 
+                />
             )}
 
-            {mensaje.texto && (
-                <div className={`mensaje-alerta ${mensaje.tipo === 'error' ? 'mensaje-alerta-error' : 'mensaje-alerta-exito'}`}>
-                    {mensaje.texto}
-                </div>
-            )}
+            <AlertMessage 
+                texto={mensaje.texto} 
+                tipo={mensaje.tipo} 
+                onClose={() => setMensaje({ texto: '', tipo: '' })} 
+            />
 
             {/* TAB: NUEVO AJUSTE */}
             {activeTab === 'nuevo' && (
@@ -590,8 +592,8 @@ const AjusteProductosPage = () => {
                         </div>
 
                         {erroresForm.detalles && (
-                            <div className="mensaje-alerta mensaje-alerta-error" style={{ padding: '8px 12px', fontSize: '13px' }}>
-                                {erroresForm.detalles}
+                            <div style={{ marginBottom: '15px' }}>
+                                <AlertMessage texto={erroresForm.detalles} tipo="error" />
                             </div>
                         )}
 
@@ -860,8 +862,8 @@ const AjusteProductosPage = () => {
                         <h3 style={{ color: 'var(--primary-hover)', marginTop: 0 }}>Agregar Producto al Detalle</h3>
 
                         {errorModal && (
-                            <div className="mensaje-alerta mensaje-alerta-error" style={{ padding: '8px 12px', fontSize: '13px', marginBottom: '15px' }}>
-                                {errorModal}
+                            <div style={{ marginBottom: '15px' }}>
+                                <AlertMessage texto={errorModal} tipo="error" />
                             </div>
                         )}
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProductos, desactivarProducto } from '../services/productoService';
 import ProductoList from '../components/ProductoList';
+import AlertMessage from '../components/AlertMessage';
 import './ProductosPage.css';
 
 const ProductosPage = () => {
@@ -82,11 +83,11 @@ const ProductosPage = () => {
                 </button>
             </header>
 
-            {mensaje.texto && (
-                <div className={`mensaje-alerta ${mensaje.tipo === 'error' ? 'mensaje-alerta-error' : 'mensaje-alerta-exito'}`}>
-                    {mensaje.texto}
-                </div>
-            )}
+            <AlertMessage 
+                texto={mensaje.texto} 
+                tipo={mensaje.tipo} 
+                onClose={() => setMensaje({ texto: '', tipo: '' })} 
+            />
 
             <div className="page-content">
                 <div className="filtros-container card">

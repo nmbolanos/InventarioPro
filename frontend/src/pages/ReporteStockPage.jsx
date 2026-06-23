@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getReporteStock } from '../services/reportesService';
+import AlertMessage from '../components/AlertMessage';
 
 const CARD_CONFIG = [
   { key: 'totalProductos', label: 'Total Productos',    color: '#00aaff' },
@@ -41,11 +42,7 @@ export default function ReporteStockPage() {
       </h2>
 
       {loading && <p style={{ color: '#00aaff' }}>Cargando reporte...</p>}
-      {error   && (
-        <p style={{ color: '#dc3545', background: '#f8d7da', padding: '10px 16px', borderRadius: '6px' }}>
-          {error}
-        </p>
-      )}
+      <AlertMessage texto={error} tipo="error" onClose={() => setError('')} />
 
       {data && (
         <>

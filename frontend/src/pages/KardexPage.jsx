@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getProductos, getKardex } from '../services/reportesService';
+import AlertMessage from '../components/AlertMessage';
 
 // Colores por tipo de movimiento
 const TIPO_COLORES = {
@@ -76,11 +77,7 @@ export default function KardexPage() {
         </button>
       </div>
 
-      {error && (
-        <p style={{ color: '#dc3545', background: '#f8d7da', padding: '10px 16px', borderRadius: '6px' }}>
-          {error}
-        </p>
-      )}
+      <AlertMessage texto={error} tipo="error" onClose={() => setError('')} />
 
       {/* Resultados */}
       {kardex && (
