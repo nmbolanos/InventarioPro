@@ -55,7 +55,7 @@ class Producto {
         if (stock_actual !== undefined) {
             query = `
                 UPDATE producto
-                SET codigo = $1, nombre = $2, descripcion = $3, graba_iva = $4, costo = $5, pvp = $6, estado = $7, stock_actual = $8
+                SET codigo = $1, nombre = $2, descripcion = $3, graba_iva = $4, costo = $5, pvp = $6, estado = $7, stock_actual = stock_actual + $8
                 WHERE codigo = $9
                 RETURNING *
             `;
