@@ -21,6 +21,9 @@ class ProductoDTO {
         if (data.graba_iva !== undefined && typeof data.graba_iva !== 'boolean' && data.graba_iva !== 'true' && data.graba_iva !== 'false') {
              errors.push('El campo graba_iva debe ser un valor booleano.');
         }
+        if (data.stock_actual !== undefined && (isNaN(data.stock_actual) || Number(data.stock_actual) < 0)) {
+             errors.push('El stock actual debe ser un valor numérico válido mayor o igual a 0.');
+        }
         
         return {
             isValid: errors.length === 0,
@@ -32,6 +35,7 @@ class ProductoDTO {
                 graba_iva: data.graba_iva === true || data.graba_iva === 'true',
                 costo: Number(data.costo),
                 pvp: Number(data.pvp),
+                stock_actual: data.stock_actual !== undefined ? Number(data.stock_actual) : undefined,
                 estado: data.estado === 'Inactivo' ? 'Inactivo' : 'Activo' // Por defecto Activo
             } : null
         };
