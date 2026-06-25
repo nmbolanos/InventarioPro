@@ -27,6 +27,7 @@ const AjusteProductosPage = () => {
     // Filter States
     const [fechaDesde, setFechaDesde] = useState('');
     const [fechaHasta, setFechaHasta] = useState('');
+    const [filtroEstado, setFiltroEstado] = useState('Todos'); // 'Todos' | 'Borradores' | 'Impresos'
 
     // Form states
     const [numeroAjuste, setNumeroAjuste] = useState('AJUS-0001');
@@ -461,13 +462,18 @@ const AjusteProductosPage = () => {
         p.nombre.toLowerCase().includes(filtroBusqueda.toLowerCase())
     );
 
-    // Filter history list by date range
+    // Filter history list by date range and status
     const historialFiltrado = historialAjustes.filter(item => {
-        if (!item.fecha) return true;
-        const fechaItem = new Date(item.fecha).toISOString().substring(0, 10);
+        if (fechaDesde || fechaHasta) {
+            if (!item.fecha) return false;
+            const fechaItem = new Date(item.fecha).toISOString().substring(0, 10);
+            if (fechaDesde && fechaItem < fechaDesde) return false;
+            if (fechaHasta && fechaItem > fechaHasta) return false;
+        }
 
-        if (fechaDesde && fechaItem < fechaDesde) return false;
-        if (fechaHasta && fechaItem > fechaHasta) return false;
+        if (filtroEstado === 'Borradores' && item.impreso) return false;
+        if (filtroEstado === 'Impresos' && !item.impreso) return false;
+
         return true;
     });
 
@@ -686,32 +692,61 @@ const AjusteProductosPage = () => {
                         </p>
                     </div>
 
-                    {/* FILTROS DE RANGO DE FECHA */}
-                    <div className="filters-grid">
-                        <div className="form-group" style={{ marginBottom: 0 }}>
+                    {/* FILTROS DE HISTORIAL */}
+                    <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '20px', width: '100%' }}>
+                        <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: '140px' }}>
                             <label style={{ fontSize: '14px', marginBottom: '4px', display: 'block' }}>Fecha Desde</label>
                             <input
                                 type="date"
                                 value={fechaDesde}
                                 onChange={(e) => { setFechaDesde(e.target.value); setPaginaActual(1); }}
+                                style={{ height: '38px', padding: '0 12px', width: '100%' }}
                             />
                         </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
+                        <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: '140px' }}>
                             <label style={{ fontSize: '14px', marginBottom: '4px', display: 'block' }}>Fecha Hasta</label>
                             <input
                                 type="date"
                                 value={fechaHasta}
                                 onChange={(e) => { setFechaHasta(e.target.value); setPaginaActual(1); }}
+                                style={{ height: '38px', padding: '0 12px', width: '100%' }}
                             />
                         </div>
+                        
+                        <div className="filter-tabs" style={{ marginBottom: 0, display: 'flex', height: '38px', flex: 1.5, minWidth: '280px' }}>
+                            <button 
+                                className={`filter-tab ${filtroEstado === 'Todos' ? 'active' : ''}`}
+                                onClick={() => { setFiltroEstado('Todos'); setPaginaActual(1); }}
+                                style={{ height: '100%', margin: 0, flex: 1 }}
+                            >
+                                Todos
+                            </button>
+                            <button 
+                                className={`filter-tab ${filtroEstado === 'Borradores' ? 'active' : ''}`}
+                                onClick={() => { setFiltroEstado('Borradores'); setPaginaActual(1); }}
+                                style={{ height: '100%', margin: 0, flex: 1 }}
+                            >
+                                Borradores
+                            </button>
+                            <button 
+                                className={`filter-tab ${filtroEstado === 'Impresos' ? 'active' : ''}`}
+                                onClick={() => { setFiltroEstado('Impresos'); setPaginaActual(1); }}
+                                style={{ height: '100%', margin: 0, flex: 1 }}
+                            >
+                                Impresos
+                            </button>
+                        </div>
+
                         <button
                             className="btn btn-secondary"
                             onClick={() => {
                                 setFechaDesde('');
                                 setFechaHasta('');
+                                setFiltroEstado('Todos');
                                 setPaginaActual(1);
                             }}
-                            disabled={!fechaDesde && !fechaHasta}
+                            disabled={!fechaDesde && !fechaHasta && filtroEstado === 'Todos'}
+                            style={{ height: '38px', padding: '0 20px', flex: '0 0 auto' }}
                         >
                             Limpiar Filtros
                         </button>
@@ -725,7 +760,6 @@ const AjusteProductosPage = () => {
                                     <th>Fecha</th>
                                     <th>Descripción</th>
                                     <th>Estado</th>
-                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -738,7 +772,11 @@ const AjusteProductosPage = () => {
                                 ) : (
                                     historialPaginado.map((item) => (
                                         <tr key={item.numero_ajuste}>
-                                            <td style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
+                                            <td 
+                                                style={{ fontWeight: 'bold', color: 'var(--primary-color)', cursor: 'pointer', textDecoration: 'underline' }}
+                                                onClick={() => handleVerDetalles(item.numero_ajuste)}
+                                                title="Ver Detalles"
+                                            >
                                                 {item.numero_ajuste}
                                             </td>
                                             <td>{new Date(item.fecha).toLocaleDateString('es-EC')}</td>
@@ -747,36 +785,6 @@ const AjusteProductosPage = () => {
                                                 <span className={`badge ${item.impreso ? 'badge-active' : 'badge-inactive'}`} style={{ backgroundColor: item.impreso ? '#d4edda' : '#fff3cd', color: item.impreso ? '#155724' : '#856404' }}>
                                                     {item.impreso ? 'Impreso (Bloqueado)' : 'Borrador'}
                                                 </span>
-                                            </td>
-                                            <td>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button
-                                                        className="btn btn-secondary"
-                                                        style={{ padding: '4px 8px', fontSize: '12px' }}
-                                                        onClick={() => handleVerDetalles(item.numero_ajuste)}
-                                                        disabled={loading}
-                                                    >
-                                                        Detalles
-                                                    </button>
-                                                    {!item.impreso && (
-                                                        <button
-                                                            className="btn btn-secondary"
-                                                            style={{ padding: '4px 8px', fontSize: '12px' }}
-                                                            onClick={() => handleEditarAjuste(item.numero_ajuste)}
-                                                            disabled={loading}
-                                                        >
-                                                            Editar
-                                                        </button>
-                                                    )}
-                                                    <button
-                                                        className="btn btn-primary"
-                                                        style={{ padding: '4px 8px', fontSize: '12px' }}
-                                                        onClick={() => handleImprimirDesdeLista(item.numero_ajuste)}
-                                                        disabled={loading}
-                                                    >
-                                                        {item.impreso ? 'Imprimir PDF' : 'Imprimir'}
-                                                    </button>
-                                                </div>
                                             </td>
                                         </tr>
                                     ))
@@ -968,13 +976,34 @@ const AjusteProductosPage = () => {
             {showDetallesModal && ajusteDetallesView && (
                 <div className="modal-overlay">
                     <div className="modal-content card" style={{ maxWidth: '700px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 style={{ color: 'var(--primary-hover)', marginTop: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                            <h3 style={{ color: 'var(--primary-hover)', margin: 0 }}>
                                 Detalles del Ajuste: {ajusteDetallesView.numero_ajuste}
                             </h3>
-                            <button className="btn btn-secondary" onClick={() => setShowDetallesModal(false)}>
-                                Cerrar
-                            </button>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                {!ajusteDetallesView.impreso && (
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={() => {
+                                            setShowDetallesModal(false);
+                                            handleEditarAjuste(ajusteDetallesView.numero_ajuste);
+                                        }}
+                                        disabled={loading}
+                                    >
+                                        Editar
+                                    </button>
+                                )}
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={() => handleImprimirDesdeLista(ajusteDetallesView.numero_ajuste)}
+                                    disabled={loading}
+                                >
+                                    {ajusteDetallesView.impreso ? 'Imprimir PDF' : 'Imprimir'}
+                                </button>
+                                <button className="btn btn-secondary" onClick={() => setShowDetallesModal(false)}>
+                                    Cerrar
+                                </button>
+                            </div>
                         </div>
                         <div style={{ marginBottom: '15px' }}>
                             <strong>Fecha:</strong> {new Date(ajusteDetallesView.fecha).toLocaleDateString('es-EC')} <br />

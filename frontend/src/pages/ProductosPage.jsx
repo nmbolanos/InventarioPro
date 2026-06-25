@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProductos, desactivarProducto } from '../services/productoService';
+import { getCatalogoProveedores } from '../services/comprasService';
 import ProductoList from '../components/ProductoList';
 import AlertMessage from '../components/AlertMessage';
 import './ProductosPage.css';
@@ -8,30 +9,43 @@ import './ProductosPage.css';
 const ProductosPage = () => {
     const navigate = useNavigate();
     const [productos, setProductos] = useState([]);
+    const [proveedoresCatalogo, setProveedoresCatalogo] = useState([]);
     const [mensaje, setMensaje] = useState({ texto: '', tipo: '' }); // tipo: 'exito' | 'error'
     const [productoADesactivar, setProductoADesactivar] = useState(null); // Estado para el modal
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('Todos'); // 'Todos', 'Activo', 'Inactivo'
+
+    // Pagination State
+    const [paginaActual, setPaginaActual] = useState(1);
+    const [itemsPorPagina, setItemsPorPagina] = useState(10);
+
+    // Sort State
+    const [sortBy, setSortBy] = useState('codigo');
+    const [sortOrder, setSortOrder] = useState('ASC');
 
     const mostrarMensaje = (texto, tipo) => {
         setMensaje({ texto, tipo });
         setTimeout(() => setMensaje({ texto: '', tipo: '' }), 5000);
     };
 
-    const cargarProductos = useCallback(async () => {
+    const cargarData = useCallback(async () => {
         try {
-            const data = await getProductos();
-            setProductos(data);
+            const [prodsData, provsData] = await Promise.all([
+                getProductos(),
+                getCatalogoProveedores()
+            ]);
+            setProductos(prodsData);
+            setProveedoresCatalogo(provsData);
         } catch (err) {
             console.error(err);
-            mostrarMensaje('Error al cargar productos del servidor', 'error');
+            mostrarMensaje('Error al cargar datos del servidor', 'error');
         }
     }, []);
 
     useEffect(() => {
-        const t = setTimeout(() => cargarProductos(), 0);
+        const t = setTimeout(() => cargarData(), 0);
         return () => clearTimeout(t);
-    }, [cargarProductos]);
+    }, [cargarData]);
 
     const handleCrearNuevo = () => {
         navigate('/productos/nuevo');
@@ -53,7 +67,7 @@ const ProductosPage = () => {
         try {
             await desactivarProducto(productoADesactivar);
             mostrarMensaje('Producto desactivado exitosamente', 'exito');
-            cargarProductos();
+            cargarData();
         } catch (error) {
             console.error(error);
             mostrarMensaje('Error al desactivar el producto', 'error');
@@ -73,6 +87,39 @@ const ProductosPage = () => {
         if (filterStatus === 'Todos') return matchesSearch;
         return matchesSearch && prod.estado === filterStatus;
     });
+
+    const productosOrdenados = [...productosFiltrados].sort((a, b) => {
+        let valA = a[sortBy];
+        let valB = b[sortBy];
+
+        if (sortBy === 'stock_actual' || sortBy === 'costo' || sortBy === 'pvp') {
+            valA = parseFloat(valA || 0);
+            valB = parseFloat(valB || 0);
+        } else {
+            valA = String(valA || '').toLowerCase();
+            valB = String(valB || '').toLowerCase();
+        }
+
+        if (valA < valB) return sortOrder === 'ASC' ? -1 : 1;
+        if (valA > valB) return sortOrder === 'ASC' ? 1 : -1;
+        return 0;
+    });
+
+    // Pagination calculation
+    const totalItems = productosOrdenados.length;
+    const totalPaginas = Math.ceil(totalItems / itemsPorPagina) || 1;
+    const paginaSegura = Math.min(paginaActual, totalPaginas) || 1;
+    const indiceInicio = (paginaSegura - 1) * itemsPorPagina;
+    const productosPaginados = productosOrdenados.slice(indiceInicio, indiceInicio + itemsPorPagina);
+    const handleSort = (column) => {
+        if (sortBy === column) {
+            setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC');
+        } else {
+            setSortBy(column);
+            setSortOrder('ASC');
+        }
+        setPaginaActual(1);
+    };
 
     return (
         <div className="productos-page-container">
@@ -102,19 +149,19 @@ const ProductosPage = () => {
                     <div className="filter-tabs">
                         <button 
                             className={`filter-tab ${filterStatus === 'Todos' ? 'active' : ''}`}
-                            onClick={() => setFilterStatus('Todos')}
+                            onClick={() => { setFilterStatus('Todos'); setPaginaActual(1); }}
                         >
                             Todos
                         </button>
                         <button 
                             className={`filter-tab ${filterStatus === 'Activo' ? 'active' : ''}`}
-                            onClick={() => setFilterStatus('Activo')}
+                            onClick={() => { setFilterStatus('Activo'); setPaginaActual(1); }}
                         >
                             Activos
                         </button>
                         <button 
                             className={`filter-tab ${filterStatus === 'Inactivo' ? 'active' : ''}`}
-                            onClick={() => setFilterStatus('Inactivo')}
+                            onClick={() => { setFilterStatus('Inactivo'); setPaginaActual(1); }}
                         >
                             Inactivos
                         </button>
@@ -122,10 +169,78 @@ const ProductosPage = () => {
                 </div>
 
                 <ProductoList 
-                    productos={productosFiltrados} 
+                    productos={productosPaginados} 
+                    proveedoresCatalogo={proveedoresCatalogo}
                     onEdit={handleEditar} 
-                    onDesactivar={handleSolicitarDesactivacion} 
+                    onDesactivar={handleSolicitarDesactivacion}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
                 />
+
+                {totalItems > 0 && (
+                    <div className="pagination-container" style={{ marginTop: '20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Mostrar</span>
+                            <select
+                                value={itemsPorPagina}
+                                onChange={(e) => { setItemsPorPagina(Number(e.target.value)); setPaginaActual(1); }}
+                                className="modern-select"
+                                style={{ padding: '4px 8px', width: 'auto' }}
+                            >
+                                <option value={5}>5</option>
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                            </select>
+                            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>registros</span>
+                        </div>
+
+                        <div className="pagination-controls">
+                            <button
+                                className="pagination-button"
+                                onClick={() => setPaginaActual(1)}
+                                disabled={paginaActual === 1}
+                            >
+                                «
+                            </button>
+                            <button
+                                className="pagination-button"
+                                onClick={() => setPaginaActual(p => Math.max(p - 1, 1))}
+                                disabled={paginaActual === 1}
+                            >
+                                Anterior
+                            </button>
+                            {Array.from({ length: totalPaginas }, (_, idx) => idx + 1).map(page => (
+                                <button
+                                    key={page}
+                                    className={`pagination-button ${paginaActual === page ? 'active' : ''}`}
+                                    onClick={() => setPaginaActual(page)}
+                                >
+                                    {page}
+                                </button>
+                            ))}
+                            <button
+                                className="pagination-button"
+                                onClick={() => setPaginaActual(p => Math.min(p + 1, totalPaginas))}
+                                disabled={paginaActual === totalPaginas}
+                            >
+                                Siguiente
+                            </button>
+                            <button
+                                className="pagination-button"
+                                onClick={() => setPaginaActual(totalPaginas)}
+                                disabled={paginaActual === totalPaginas}
+                            >
+                                »
+                            </button>
+                        </div>
+
+                        <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                            Mostrando {indiceInicio + 1} a {Math.min(indiceInicio + itemsPorPagina, totalItems)} de {totalItems} registros
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* Modal Personalizado de Confirmación */}
