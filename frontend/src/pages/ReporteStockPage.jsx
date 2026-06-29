@@ -11,11 +11,13 @@ const CARD_CONFIG = [
 ];
 
 export default function ReporteStockPage() {
-  const [data,     setData]    = useState(null);
+  const [data,      setData]    = useState(null);
   const [loading,  setLoading] = useState(true);
   const [error,    setError]   = useState('');
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('Todos');
+  const [paginaActual, setPaginaActual] = useState(1);
+  const FILAS_POR_PAGINA = 10;
 
   useEffect(() => {
     getReporteStock()
@@ -23,6 +25,17 @@ export default function ReporteStockPage() {
       .catch(() => setError('Error al cargar el reporte de stock'))
       .finally(() => setLoading(false));
   }, []);
+
+  // 🆕 Manejadores que actualizan el valor y reinician la página a 1 en un solo ciclo
+  const handleBusquedaChange = (e) => {
+    setBusqueda(e.target.value);
+    setPaginaActual(1);
+  };
+
+  const handleFiltroEstadoChange = (e) => {
+    setFiltroEstado(e.target.value);
+    setPaginaActual(1);
+  };
 
   const productosFiltrados = data?.productos?.filter(p => {
     const coincideBusqueda =
@@ -32,6 +45,11 @@ export default function ReporteStockPage() {
       filtroEstado === 'Todos' || p.estado === filtroEstado;
     return coincideBusqueda && coincideEstado;
   }) ?? [];
+
+  // Cálculo de productos a mostrar en la página actual
+  const totalPaginas = Math.ceil(productosFiltrados.length / FILAS_POR_PAGINA);
+  const indiceInicio = (paginaActual - 1) * FILAS_POR_PAGINA;
+  const productosPaginados = productosFiltrados.slice(indiceInicio, indiceInicio + FILAS_POR_PAGINA);
 
   return (
     <div style={{ padding: '24px' }}>
@@ -74,7 +92,7 @@ export default function ReporteStockPage() {
               type="text"
               placeholder="Buscar por nombre o código..."
               value={busqueda}
-              onChange={e => setBusqueda(e.target.value)}
+              onChange={handleBusquedaChange} // 🆕 Actualizado
               style={{
                 padding: '8px 14px', borderRadius: '6px',
                 border: '1px solid #cce5ff', width: '280px', fontSize: '1rem'
@@ -82,7 +100,7 @@ export default function ReporteStockPage() {
             />
             <select
               value={filtroEstado}
-              onChange={e => setFiltroEstado(e.target.value)}
+              onChange={handleFiltroEstadoChange} // 🆕 Actualizado
               style={{
                 padding: '8px 14px', borderRadius: '6px',
                 border: '1px solid #cce5ff', fontSize: '1rem'
@@ -121,7 +139,7 @@ export default function ReporteStockPage() {
                     </td>
                   </tr>
                 ) : (
-                  productosFiltrados.map((p, i) => {
+                  productosPaginados.map((p, i) => {
                     const sinStock  = Number(p.stock_actual) === 0;
                     const stockBajo = Number(p.stock_actual) > 0 && Number(p.stock_actual) < 5;
                     return (
@@ -179,9 +197,63 @@ export default function ReporteStockPage() {
             </table>
           </div>
 
-          <p style={{ marginTop: '10px', color: '#888', fontSize: '0.85rem' }}>
-            Mostrando {productosFiltrados.length} de {data.productos.length} productos
-          </p>
+          {/* Controles de paginación */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between',
+            alignItems: 'center', marginTop: '14px', flexWrap: 'wrap', gap: '10px'
+          }}>
+            <span style={{ color: '#888', fontSize: '0.85rem' }}>
+              Mostrando {productosFiltrados.length === 0 ? 0 : indiceInicio + 1}–
+              {Math.min(paginaActual * FILAS_POR_PAGINA, productosFiltrados.length)} de {productosFiltrados.length} productos
+            </span>
+
+            {totalPaginas > 1 && (
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <button
+                  onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+                  disabled={paginaActual === 1}
+                  style={{
+                    padding: '6px 14px', borderRadius: '6px',
+                    border: '1px solid #cce5ff', background: '#fff',
+                    color: '#00aaff', cursor: paginaActual === 1 ? 'not-allowed' : 'pointer',
+                    opacity: paginaActual === 1 ? 0.5 : 1, fontSize: '0.9rem'
+                  }}
+                >
+                  ‹ Anterior
+                </button>
+
+                {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(num => (
+                  <button
+                    key={num}
+                    onClick={() => setPaginaActual(num)}
+                    style={{
+                      padding: '6px 12px', borderRadius: '6px',
+                      border: '1px solid #cce5ff',
+                      background: paginaActual === num ? '#00aaff' : '#fff',
+                      color: paginaActual === num ? '#fff' : '#00aaff',
+                      fontWeight: paginaActual === num ? 'bold' : 'normal',
+                      cursor: 'pointer', fontSize: '0.9rem', minWidth: '36px'
+                    }}
+                  >
+                    {num}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
+                  disabled={paginaActual === totalPaginas}
+                  style={{
+                    padding: '6px 14px', borderRadius: '6px',
+                    border: '1px solid #cce5ff', background: '#fff',
+                    color: '#00aaff', cursor: paginaActual === totalPaginas ? 'not-allowed' : 'pointer',
+                    opacity: paginaActual === totalPaginas ? 0.5 : 1, fontSize: '0.9rem'
+                  }}
+                >
+                  Siguiente ›
+                </button>
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>

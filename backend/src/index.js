@@ -7,11 +7,14 @@ const reportesRoutes = require('./routes/reportes');
 const productoRoutes = require("./routes/productoRoutes");
 const ajusteCabeceraRoutes = require("./routes/ajusteCabecera");
 const ajusteDetalleRoutes = require("./routes/ajusteDetalle");
+const dashboardRoutes = require('./routes/dashboard');
+
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use('/api/dashboard', dashboardRoutes);
 
 // Montar rutas de la API
 app.use("/api/productos", productoRoutes);
