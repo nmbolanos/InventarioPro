@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const productoController = require('../controllers/productoController');
+const auth = require('../middleware/auth');
+const { checkRole } = require('../middleware/roles');
 
 /**
  * @swagger
@@ -32,6 +34,9 @@ const productoController = require('../controllers/productoController');
  *         pvp:
  *           type: number
  *           description: Precio de Venta al Público
+ *         stock_actual:
+ *           type: number
+ *           description: Cantidad de stock disponible en inventario
  *         estado:
  *           type: string
  *           enum: [Activo, Inactivo]
@@ -48,6 +53,7 @@ const productoController = require('../controllers/productoController');
  *       200:
  *         description: Lista de productos activos con su stock y % IVA
  */
+// Se deja pública la API de Salida para que el módulo de Facturación/Ventas pueda consumirla directamente
 router.get('/catalogo', productoController.getCatalogo);
 
 /**
@@ -60,7 +66,7 @@ router.get('/catalogo', productoController.getCatalogo);
  *       200:
  *         description: Lista de todos los productos
  */
-router.get('/', productoController.getAllProductos);
+router.get('/', auth, checkRole(['INV_BODEGUERO ', 'INV_SUPERVISOR']), productoController.getAllProductos);
 
 /**
  * @swagger
@@ -81,7 +87,7 @@ router.get('/', productoController.getAllProductos);
  *       404:
  *         description: Producto no encontrado
  */
-router.get('/:codigo', productoController.getProductoByCodigo);
+router.get('/:codigo', auth, checkRole(['INV_BODEGUERO ', 'INV_SUPERVISOR']), productoController.getProductoByCodigo);
 
 /**
  * @swagger
@@ -103,7 +109,7 @@ router.get('/:codigo', productoController.getProductoByCodigo);
  *       409:
  *         description: El código ya existe
  */
-router.post('/', productoController.createProducto);
+router.post('/', auth, checkRole(['INV_BODEGUERO ', 'INV_SUPERVISOR']), productoController.createProducto);
 
 /**
  * @swagger
@@ -132,7 +138,7 @@ router.post('/', productoController.createProducto);
  *       404:
  *         description: Producto no encontrado
  */
-router.put('/:codigo', productoController.updateProducto);
+router.put('/:codigo', auth, checkRole(['INV_BODEGUERO ', 'INV_SUPERVISOR']), productoController.updateProducto);
 
 /**
  * @swagger
@@ -153,39 +159,6 @@ router.put('/:codigo', productoController.updateProducto);
  *       404:
  *         description: Producto no encontrado
  */
-router.patch('/:codigo/desactivar', productoController.desactivarProducto);
-
-/**
- * @swagger
- * /api/productos/{codigo}/stock:
- *   patch:
- *     summary: Suma o resta stock a un producto (API de Salida para Compras/Ventas)
- *     tags: [Productos]
- *     parameters:
- *       - in: path
- *         name: codigo
- *         schema:
- *           type: string
- *         required: true
- *         description: Código del producto
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               cantidad:
- *                 type: integer
- *                 description: Cantidad a sumar al stock actual (puede ser negativo para restar)
- *     responses:
- *       200:
- *         description: Stock actualizado exitosamente
- *       400:
- *         description: Cantidad inválida
- *       404:
- *         description: Producto no encontrado
- */
-router.patch('/:codigo/stock', productoController.addStock);
+router.patch('/:codigo/desactivar', auth, checkRole(['INV_BODEGUERO ', 'INV_SUPERVISOR']), productoController.desactivarProducto);
 
 module.exports = router;
