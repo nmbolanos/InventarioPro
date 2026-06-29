@@ -6,20 +6,31 @@ import ProductoFormPage from './pages/ProductoFormPage';
 import AjusteProductosPage from './pages/AjusteProductosPage';
 import KardexPage from './pages/KardexPage';
 import ReporteStockPage from './pages/ReporteStockPage';
+import LoginPage from './pages/LoginPage';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<HomePage />} />
-          <Route path="productos" element={<ProductosPage />} />
-          <Route path="productos/nuevo" element={<ProductoFormPage />} />
-          <Route path="productos/editar/:codigo" element={<ProductoFormPage />} />
-          <Route path="ajustes" element={<AjusteProductosPage />} />
-          <Route path="/kardex" element={<KardexPage />} />
-          <Route path="/reporte-stock" element={<ReporteStockPage />} />
-          {/* Aquí se agregarán más rutas luego como path="ajustes" etc. */}
+        {/* Ruta Pública de Login */}
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Rutas protegidas generales (Bodeguero o Supervisor) bajo el Layout común */}
+        <Route element={<ProtectedRoute allowedRoles={['INV_BODEGUERO', 'INV_SUPERVISOR']} />}>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<HomePage />} />
+            <Route path="productos" element={<ProductosPage />} />
+            <Route path="productos/nuevo" element={<ProductoFormPage />} />
+            <Route path="productos/editar/:codigo" element={<ProductoFormPage />} />
+            <Route path="ajustes" element={<AjusteProductosPage />} />
+
+            {/* Rutas exclusivas para Supervisor */}
+            <Route element={<ProtectedRoute allowedRoles={['INV_SUPERVISOR']} />}>
+              <Route path="kardex" element={<KardexPage />} />
+              <Route path="reporte-stock" element={<ReporteStockPage />} />
+            </Route>
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

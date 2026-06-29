@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const productoController = require('../controllers/productoController');
+const auth = require('../middleware/auth');
+const { checkRole } = require('../middleware/roles');
 
 /**
  * @swagger
@@ -51,6 +53,7 @@ const productoController = require('../controllers/productoController');
  *       200:
  *         description: Lista de productos activos con su stock y % IVA
  */
+// Se deja pública la API de Salida para que el módulo de Facturación/Ventas pueda consumirla directamente
 router.get('/catalogo', productoController.getCatalogo);
 
 /**
@@ -63,7 +66,7 @@ router.get('/catalogo', productoController.getCatalogo);
  *       200:
  *         description: Lista de todos los productos
  */
-router.get('/', productoController.getAllProductos);
+router.get('/', auth, checkRole(['INV_BODEGUERO ', 'INV_SUPERVISOR']), productoController.getAllProductos);
 
 /**
  * @swagger
@@ -84,7 +87,7 @@ router.get('/', productoController.getAllProductos);
  *       404:
  *         description: Producto no encontrado
  */
-router.get('/:codigo', productoController.getProductoByCodigo);
+router.get('/:codigo', auth, checkRole(['INV_BODEGUERO ', 'INV_SUPERVISOR']), productoController.getProductoByCodigo);
 
 /**
  * @swagger
@@ -106,7 +109,7 @@ router.get('/:codigo', productoController.getProductoByCodigo);
  *       409:
  *         description: El código ya existe
  */
-router.post('/', productoController.createProducto);
+router.post('/', auth, checkRole(['INV_BODEGUERO ', 'INV_SUPERVISOR']), productoController.createProducto);
 
 /**
  * @swagger
@@ -135,7 +138,7 @@ router.post('/', productoController.createProducto);
  *       404:
  *         description: Producto no encontrado
  */
-router.put('/:codigo', productoController.updateProducto);
+router.put('/:codigo', auth, checkRole(['INV_BODEGUERO ', 'INV_SUPERVISOR']), productoController.updateProducto);
 
 /**
  * @swagger
@@ -156,6 +159,6 @@ router.put('/:codigo', productoController.updateProducto);
  *       404:
  *         description: Producto no encontrado
  */
-router.patch('/:codigo/desactivar', productoController.desactivarProducto);
+router.patch('/:codigo/desactivar', auth, checkRole(['INV_BODEGUERO ', 'INV_SUPERVISOR']), productoController.desactivarProducto);
 
 module.exports = router;

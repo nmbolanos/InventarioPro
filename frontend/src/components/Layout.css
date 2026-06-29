@@ -76,5 +76,74 @@
     flex: 1;
     margin-left: 250px;
     overflow-y: auto;
-    /* El padding se maneja dentro de cada página específica como .productos-page-container */
+}
+
+.sidebar-footer {
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
+    background-color: #fafbfc;
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.user-avatar {
+    font-size: 24px;
+    background-color: rgba(0, 180, 216, 0.1);
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.user-role {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-weight: bold;
+    letter-spacing: 0.3px;
+    margin-top: 2px;
+}
+
+.btn-logout {
+    width: 100%;
+    padding: 10px;
+    background-color: transparent;
+    border: 1.5px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-logout:hover {
+    background-color: rgba(231, 111, 0, 0.05);
+    border-color: var(--error-color);
+    color: var(--error-color);
 }
