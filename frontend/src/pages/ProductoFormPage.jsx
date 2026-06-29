@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getProducto, createProducto, updateProducto } from '../services/productoService';
 import ProductoForm from '../components/ProductoForm';
+import AlertMessage from '../components/AlertMessage';
 import './ProductosPage.css'; // Reutilizamos los estilos del contenedor
 
 const ProductoFormPage = () => {
@@ -66,11 +67,7 @@ const ProductoFormPage = () => {
                 </button>
             </header>
 
-            {mensajeError && (
-                <div className="mensaje-alerta mensaje-alerta-error">
-                    {mensajeError}
-                </div>
-            )}
+            <AlertMessage texto={mensajeError} tipo="error" onClose={() => setMensajeError('')} />
 
             <div className="page-content">
                 <ProductoForm 

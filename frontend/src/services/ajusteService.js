@@ -23,9 +23,19 @@ export const crearAjusteCabecera = async (cabecera) => {
     return response.data;
 };
 
+export const actualizarAjusteCabecera = async (numeroAjuste, cabecera) => {
+    const response = await axios.put(`${API_BASE_URL}/ajustes/cabecera/${numeroAjuste}`, cabecera);
+    return response.data;
+};
+
 export const crearAjusteDetalle = async (detalle) => {
     // Detalle format: { numero_ajuste, codigo_producto, cantidad }
     const response = await axios.post(`${API_BASE_URL}/ajustes/detalle`, detalle);
+    return response.data;
+};
+
+export const eliminarAjusteDetalle = async (idDetalle) => {
+    const response = await axios.delete(`${API_BASE_URL}/ajustes/detalle/${idDetalle}`);
     return response.data;
 };
 
