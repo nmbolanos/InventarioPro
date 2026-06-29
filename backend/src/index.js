@@ -3,17 +3,23 @@ const cors = require("cors");
 const pool = require("./config/db");
 const reportesRoutes = require('./routes/reportes');
 
-// Importar rutas
+// Importar rutas y middlewares
 const productoRoutes = require("./routes/productoRoutes");
 const ajusteCabeceraRoutes = require("./routes/ajusteCabecera");
 const ajusteDetalleRoutes = require("./routes/ajusteDetalle");
+const authRoutes = require("./routes/auth");
+const auditMiddleware = require("./middleware/auditoria");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
+// Montar middleware global de auditoría (intercepta POST, PUT, DELETE, PATCH de todas las rutas)
+app.use(auditMiddleware);
+
 // Montar rutas de la API
+app.use("/api/auth", authRoutes);
 app.use("/api/productos", productoRoutes);
 app.use("/api/ajustes/cabecera", ajusteCabeceraRoutes);
 app.use("/api/ajustes/detalle", ajusteDetalleRoutes);

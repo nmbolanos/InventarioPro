@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const ajusteCabeceraController = require('../controllers/ajusteCabecera');
+const auth = require('../middleware/auth');
+const { checkRole } = require('../middleware/roles');
+
+router.use(auth);
+router.use(checkRole(['INV_BODEGUERO ', 'INV_SUPERVISOR']));
 
 router.get('/actual', ajusteCabeceraController.obtenerActual);
 router.get('/', ajusteCabeceraController.obtenerTodos);

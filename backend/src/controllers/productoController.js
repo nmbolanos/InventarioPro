@@ -105,33 +105,11 @@ const getCatalogo = async (req, res) => {
     }
 };
 
-const addStock = async (req, res) => {
-    try {
-        const { codigo } = req.params;
-        const { cantidad } = req.body;
-
-        if (cantidad === undefined || isNaN(cantidad)) {
-            return res.status(400).json({ success: false, message: 'La cantidad es requerida y debe ser un número.' });
-        }
-
-        const productoActualizado = await Producto.addStock(codigo, parseInt(cantidad, 10));
-        
-        if (!productoActualizado) {
-             return res.status(404).json({ success: false, message: 'Producto no encontrado.' });
-        }
-        
-        res.json({ success: true, message: `Stock actualizado exitosamente. Nuevo stock: ${productoActualizado.stock_actual}`, data: productoActualizado });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Error al actualizar el stock.', error: error.message });
-    }
-};
-
 module.exports = {
     getAllProductos,
     getProductoByCodigo,
     createProducto,
     updateProducto,
     desactivarProducto,
-    getCatalogo,
-    addStock
+    getCatalogo
 };
