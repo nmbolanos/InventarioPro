@@ -58,4 +58,4 @@ app.listen(PORT, () => {
     swaggerDocs(app, PORT);
 });
 
-app.use('/api/reportes', reportesRoutes);
+app.use('/api/reportes', reportesRoutes);  
