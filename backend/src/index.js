@@ -7,6 +7,8 @@ const reportesRoutes = require('./routes/reportes');
 const productoRoutes = require("./routes/productoRoutes");
 const ajusteCabeceraRoutes = require("./routes/ajusteCabecera");
 const ajusteDetalleRoutes = require("./routes/ajusteDetalle");
+const dashboardRoutes = require('./routes/dashboard');
+
 const authRoutes = require("./routes/auth");
 const auditMiddleware = require("./middleware/auditoria");
 
@@ -14,6 +16,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use('/api/dashboard', dashboardRoutes);
 
 // Montar middleware global de auditoría (intercepta POST, PUT, DELETE, PATCH de todas las rutas)
 app.use(auditMiddleware);
