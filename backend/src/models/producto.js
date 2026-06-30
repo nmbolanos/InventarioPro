@@ -1,6 +1,12 @@
 const pool = require('../config/db');
 
 class Producto {
+    static async getAll() {
+        const query = 'SELECT * FROM producto ORDER BY codigo ASC';
+        const result = await pool.query(query);
+        return result.rows;
+    }
+
     static async getByCodigo(codigo) {
         const query = 'SELECT * FROM producto WHERE codigo = $1';
         const result = await pool.query(query, [codigo]);
