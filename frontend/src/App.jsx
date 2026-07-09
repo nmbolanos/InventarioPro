@@ -16,7 +16,10 @@ function App() {
         {/* Ruta Pública de Login */}
         <Route path="/login" element={<LoginPage />} />
 
-        {/* Rutas protegidas generales (Bodeguero o Supervisor) bajo el Layout común */}
+        {/* Rutas protegidas generales (Bodeguero o Supervisor) bajo el Layout común 
+        EN LUGAR DE CREAR UN allowedRoles, crear un allowedPermisions y verificar al usuario logeado mediante los permisos
+        que arroja la API de ese user
+        */}
         <Route element={<ProtectedRoute allowedRoles={['INV_BODEGUERO', 'INV_SUPERVISOR']} />}>
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
