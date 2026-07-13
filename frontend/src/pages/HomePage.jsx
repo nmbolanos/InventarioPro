@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
-  LineChart, Line,
-  AreaChart, Area,
 } from 'recharts';
 import { 
   getDashboard, 
@@ -230,16 +228,20 @@ export default function HomePage() {
           <div className="alert alert-info mb-0">No hay movimientos registrados aún.</div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={movimientosTemp}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="periodo" tick={{ fontSize: 11 }} />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="compras" name="Compras" stroke="#28a745" strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="ventas" name="Ventas" stroke="#dc3545" strokeWidth={2} dot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
+  <BarChart data={movimientosTemp} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+    <XAxis dataKey="periodo" tick={{ fontSize: 11 }} />
+    <YAxis allowDecimals={false} />
+    <Tooltip
+      formatter={(value, name) => [value, name === 'compras' ? 'Compras' : 'Ventas']}
+    />
+    <Legend
+      formatter={value => value === 'compras' ? 'Compras' : 'Ventas'}
+    />
+    <Bar dataKey="compras" name="compras" fill="#28a745" radius={[4, 4, 0, 0]} />
+    <Bar dataKey="ventas"  name="ventas"  fill="#dc3545" radius={[4, 4, 0, 0]} />
+  </BarChart>
+</ResponsiveContainer>
         )}
       </div>
     </div>
@@ -256,20 +258,29 @@ export default function HomePage() {
           <div className="alert alert-info mb-0">No hay ventas registradas aún.</div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={masVendidos}>
-              <defs>
-                <linearGradient id="colorVentas" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={COLOR_PRIMARIO} stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor={COLOR_PRIMARIO} stopOpacity={0.1}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="nombre" tick={{ fontSize: 10 }} angle={-15} textAnchor="end" height={60} />
-              <YAxis />
-              <Tooltip />
-              <Area type="monotone" dataKey="cantidad" name="Unidades vendidas" stroke={COLOR_PRIMARIO} fill="url(#colorVentas)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
+  <BarChart data={masVendidos} margin={{ top: 5, right: 10, left: 0, bottom: 60 }}>
+    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+    <XAxis
+      dataKey="nombre"
+      tick={{ fontSize: 10 }}
+      angle={-30}
+      textAnchor="end"
+      interval={0}
+    />
+    <YAxis allowDecimals={false} />
+    <Tooltip
+      formatter={(value) => [value, 'Unidades vendidas']}
+    />
+    <Bar dataKey="cantidad" name="Unidades vendidas" radius={[4, 4, 0, 0]}>
+      {masVendidos.map((entry, index) => (
+        <Cell
+          key={`cell-${index}`}
+          fill={index % 2 === 0 ? COLOR_PRIMARIO : '#0077cc'}
+        />
+      ))}
+    </Bar>
+  </BarChart>
+</ResponsiveContainer>
         )}
       </div>
     </div>
