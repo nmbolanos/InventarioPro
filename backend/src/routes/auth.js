@@ -11,6 +11,35 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ success: false, message: 'El usuario y la contraseña son requeridos.' });
   }
 
+  let loginUsername = username.trim();
+
+  // Consultar la lista de usuarios para verificar si ingresó una cédula
+  try {
+    const usersResponse = await axios.post(GRAPHQL_URL, {
+      query: `
+        query {
+          usuarios {
+            userName
+            cedula
+          }
+        }
+      `
+    }, {
+      timeout: 5000
+    });
+
+    const users = usersResponse.data?.data?.usuarios || [];
+    const foundUser = users.find(
+      u => u.cedula === loginUsername || u.userName.toLowerCase() === loginUsername.toLowerCase()
+    );
+
+    if (foundUser) {
+      loginUsername = foundUser.userName;
+    }
+  } catch (err) {
+    console.error('Error al resolver la cédula en pre-login:', err.message);
+  }
+
   const loginMutation = `
     mutation Login($username: String!, $password: String!) {
       login(username: $username, password: $password) {
@@ -24,7 +53,7 @@ router.post('/login', async (req, res) => {
   try {
     const response = await axios.post(GRAPHQL_URL, {
       query: loginMutation,
-      variables: { username, password }
+      variables: { username: loginUsername, password }
     }, {
       timeout: 10000 // 10 segundos de timeout
     });
@@ -32,16 +61,26 @@ router.post('/login', async (req, res) => {
     const result = response.data;
 
     if (result.errors) {
+      let errMessage = result.errors[0].message || 'Error en la petición a la API de Seguridad.';
+      if (errMessage.includes('Usuario no existe en Seguridades')) {
+        errMessage = 'Usuario no registrado';
+      }
       return res.status(400).json({ 
         success: false, 
-        message: result.errors[0].message || 'Error en la petición a la API de Seguridad.' 
+        message: errMessage
       });
     }
 
     const { success, token, message } = result.data.login;
 
     if (!success) {
-      return res.status(401).json({ success: false, message: message || 'Credenciales inválidas.' });
+      let cleanMessage = message || 'Credenciales inválidas.';
+      if (cleanMessage.includes('Usuario no existe en Seguridades')) {
+        cleanMessage = 'Usuario no registrado';
+      } else if (cleanMessage.includes('Credenciales inválidas')) {
+        cleanMessage = 'Credenciales inválidas.';
+      }
+      return res.status(401).json({ success: false, message: cleanMessage });
     }
 
     return res.json({

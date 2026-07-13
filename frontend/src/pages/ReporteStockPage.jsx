@@ -65,11 +65,11 @@ export default function ReporteStockPage() {
       {data && (
         <>
           {/* Tarjetas resumen */}
-          <div style={{ display: 'flex', gap: '14px', marginBottom: '24px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '14px', marginBottom: '24px' }}>
             {CARD_CONFIG.map(card => (
               <div key={card.key} style={{
                 background: '#fff', borderRadius: '10px',
-                padding: '14px 20px', minWidth: '140px', textAlign: 'center',
+                padding: '14px 20px', flex: 1, textAlign: 'center',
                 borderTop: `4px solid ${card.color}`,
                 boxShadow: '0 2px 8px rgba(0,170,255,0.08)'
               }}>

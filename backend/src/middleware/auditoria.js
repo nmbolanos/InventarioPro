@@ -3,7 +3,7 @@ const axios = require('axios');
 const protobuf = require('protobufjs');
 
 const protoPath = path.join(__dirname, '..', 'config', 'auditoria.proto');
-const auditUrl = 'https://98l52rpey8.execute-api.us-east-1.amazonaws.com/default/api-pistas-auditoria';
+const auditUrl = 'https://712286fsib.execute-api.us-east-1.amazonaws.com/default/api-auth-central';
 
 // Mapeo de rutas a IDs de funciones y descripciones
 function obtenerDetalleAccion(req) {

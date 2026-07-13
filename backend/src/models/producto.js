@@ -8,6 +8,12 @@ router.delete('/:id', productoController.eliminar);
 
 module.exports = router;
 class Producto {
+    static async getAll() {
+        const query = 'SELECT * FROM producto ORDER BY codigo ASC';
+        const result = await pool.query(query);
+        return result.rows;
+    }
+
     static async getByCodigo(codigo) {
         const query = 'SELECT * FROM producto WHERE codigo = $1';
         const result = await pool.query(query, [codigo]);
@@ -50,27 +56,14 @@ class Producto {
     }
 
     static async update(codigoActual, producto) {
-        const { codigo, nombre, descripcion, graba_iva, costo, pvp, estado, stock_actual } = producto;
-        let query, values;
-
-        if (stock_actual !== undefined) {
-            query = `
-                UPDATE producto
-                SET codigo = $1, nombre = $2, descripcion = $3, graba_iva = $4, costo = $5, pvp = $6, estado = $7, stock_actual = stock_actual + $8
-                WHERE codigo = $9
-                RETURNING *
-            `;
-            values = [codigo, nombre, descripcion, graba_iva, costo, pvp, estado, stock_actual, codigoActual];
-        } else {
-            query = `
-                UPDATE producto
-                SET codigo = $1, nombre = $2, descripcion = $3, graba_iva = $4, costo = $5, pvp = $6, estado = $7
-                WHERE codigo = $8
-                RETURNING *
-            `;
-            values = [codigo, nombre, descripcion, graba_iva, costo, pvp, estado, codigoActual];
-        }
-
+        const { codigo, nombre, descripcion, graba_iva, costo, pvp, estado } = producto;
+        const query = `
+            UPDATE producto
+            SET codigo = $1, nombre = $2, descripcion = $3, graba_iva = $4, costo = $5, pvp = $6, estado = $7
+            WHERE codigo = $8
+            RETURNING *
+        `;
+        const values = [codigo, nombre, descripcion, graba_iva, costo, pvp, estado, codigoActual];
         const result = await pool.query(query, values);
         return result.rows[0];
     }
