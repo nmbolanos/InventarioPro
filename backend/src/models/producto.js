@@ -1,12 +1,4 @@
 const pool = require('../config/db');
-
-router.get('/', productoController.obtenerTodos);
-router.get('/:id', productoController.obtenerPorId);
-router.post('/', productoController.crear);
-router.put('/:id', productoController.actualizar);
-router.delete('/:id', productoController.eliminar);
-
-module.exports = router;
 class Producto {
     static async getAll() {
         const query = 'SELECT * FROM producto ORDER BY codigo ASC';
