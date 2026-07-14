@@ -4,6 +4,58 @@ const axios = require('axios');
 
 const GRAPHQL_URL = 'https://proyecto-moduloseguridad.onrender.com/graphql/';
 
+/**
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     summary: Obtiene un token JWT para autenticarse en los endpoints protegidos
+ *     tags: [Autenticación]
+ *     description: |
+ *       Envía las credenciales del usuario al módulo de Seguridad Centralizada.
+ *       Si son válidas, retorna un token JWT que debe incluirse en el header
+ *       `Authorization: Bearer <token>` de las demás peticiones.
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 description: Nombre de usuario o cédula
+ *                 example: CarlosRueda
+ *               password:
+ *                 type: string
+ *                 description: Contraseña del usuario
+ *                 example: C@rlos123.
+ *     responses:
+ *       200:
+ *         description: Login exitoso. Retorna el token JWT.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 token:
+ *                   type: string
+ *                   description: Token JWT para usar en el header Authorization
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                 message:
+ *                   type: string
+ *                   example: Inicio de sesión exitoso
+ *       401:
+ *         description: Credenciales inválidas
+ *       500:
+ *         description: Error de conexión con el servidor de Seguridad
+ */
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
 

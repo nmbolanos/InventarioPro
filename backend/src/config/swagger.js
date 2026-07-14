@@ -15,6 +15,17 @@ const options = {
                 description: 'Servidor Local de Desarrollo',
             },
         ],
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT',
+                    description: 'Ingrese el token JWT obtenido del endpoint POST /api/auth/login. Formato: Bearer <token>'
+                }
+            }
+        },
+        security: [{ bearerAuth: [] }],
     },
     // Rutas donde Swagger buscará los comentarios para generar la documentación
     apis: ['./src/routes/*.js', './src/models/*.js'], 
@@ -22,9 +33,8 @@ const options = {
 
 const swaggerSpec = swaggerJSDoc(options);
 
-const swaggerDocs = (app, port) => {
+const swaggerDocs = (app) => {
     app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-    console.log(`Documentación de Swagger disponible en http://localhost:${port}/api/docs`);
 };
 
 module.exports = swaggerDocs;

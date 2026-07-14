@@ -13,9 +13,13 @@ const authRoutes = require("./routes/auth");
 const auditMiddleware = require("./middleware/auditoria");
 
 const app = express();
+const swaggerDocs = require('./config/swagger');
 
 app.use(cors());
 app.use(express.json());
+
+// Montar Swagger ANTES de las rutas protegidas para que /api/docs no sea bloqueado
+swaggerDocs(app);
 app.use('/api/dashboard', dashboardRoutes);
 
 // Montar middleware global de auditoría (intercepta POST, PUT, DELETE, PATCH de todas las rutas)
@@ -52,11 +56,8 @@ app.get("/probar-db", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-const swaggerDocs = require('./config/swagger');
 
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
-    swaggerDocs(app, PORT);
+    console.log(`Documentación de Swagger disponible en http://localhost:${PORT}/api/docs`);
 });
-
-app.use('/api/reportes', reportesRoutes);
