@@ -18,13 +18,14 @@ const getProductos = async (req, res) => {
 // Kardex de un producto (HU5)
 const getKardex = async (req, res) => {
   const { codigoProducto } = req.params;
+  const { fechaInicio, fechaFin } = req.query; // 🆕 recibe fechas por query string
 
   try {
     // Verificar que el producto existe
     const productoResult = await pool.query(
-      `SELECT codigo, nombre, descripcion, graba_iva, 
+      `SELECT codigo, nombre, descripcion, graba_iva,
               costo, pvp, estado, stock_actual
-       FROM producto 
+       FROM producto
        WHERE codigo = $1`,
       [codigoProducto]
     );
@@ -35,9 +36,25 @@ const getKardex = async (req, res) => {
 
     const producto = productoResult.rows[0];
 
-    // Obtener todos los movimientos del kardex ordenados por fecha
+    // Construir filtro de fechas dinámicamente
+    const condiciones = ['codigo_producto = $1'];
+    const valores = [codigoProducto];
+
+    if (fechaInicio) {
+      valores.push(fechaInicio);
+      condiciones.push(`fecha >= $${valores.length}::date`);
+    }
+
+    if (fechaFin) {
+      // Sumamos 1 día para incluir todo el día de la fecha fin
+      valores.push(fechaFin);
+      condiciones.push(`fecha < ($${valores.length}::date + INTERVAL '1 day')`);
+    }
+
+    const whereClause = condiciones.join(' AND ');
+
     const movimientosResult = await pool.query(
-      `SELECT 
+      `SELECT
          id_movimiento,
          fecha,
          tipo_movimiento,
@@ -48,20 +65,18 @@ const getKardex = async (req, res) => {
          valor_total,
          stock_resultante
        FROM movimiento_kardex
-       WHERE codigo_producto = $1
+       WHERE ${whereClause}
        ORDER BY fecha ASC, id_movimiento ASC`,
-      [codigoProducto]
+      valores
     );
 
     const movimientos = movimientosResult.rows;
 
-    // Stock inicial = stock antes del primer movimiento
-    // Si no hay movimientos, stock_inicial = stock_actual
+    // Stock inicial y final
     const stockInicial = movimientos.length > 0
       ? movimientos[0].stock_resultante - movimientos[0].cantidad
       : producto.stock_actual;
 
-    // Stock final = stock_resultante del último movimiento
     const stockFinal = movimientos.length > 0
       ? movimientos[movimientos.length - 1].stock_resultante
       : producto.stock_actual;
@@ -71,14 +86,19 @@ const getKardex = async (req, res) => {
       stock_inicial: stockInicial,
       stock_final: stockFinal,
       total_movimientos: movimientos.length,
+      // 🆕 devuelve las fechas aplicadas para mostrarlas en el frontend
+      filtros: {
+        fechaInicio: fechaInicio || null,
+        fechaFin: fechaFin || null,
+      },
       movimientos,
     });
 
   } catch (error) {
     console.error('Error en getKardex:', error);
-    res.status(500).json({ 
-      message: 'Error al obtener el kardex', 
-      error: error.message 
+    res.status(500).json({
+      message: 'Error al obtener el kardex',
+      error: error.message
     });
   }
 };
