@@ -10,15 +10,20 @@ const TIPO_COLORES = {
 };
 
 export default function KardexPage() {
-  const [productos,   setProductos]   = useState([]);
-  const [codigoSel,  setCodigoSel]   = useState('');
-  const [kardex,     setKardex]      = useState(null);
-  const [loading,    setLoading]     = useState(false);
-  const [error,      setError]       = useState('');
+  const [productos,    setProductos]   = useState([]);
+  const [codigoSel,   setCodigoSel]   = useState('');
+  const [kardex,      setKardex]      = useState(null);
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState('');
 
-  // Estados del buscador con autocompletado
-  const [busqueda, setBusqueda] = useState('');
+  // Buscador con autocompletado
+  const [busqueda,     setBusqueda]     = useState('');
   const [mostrarLista, setMostrarLista] = useState(false);
+
+  // Filtros de fecha
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin,    setFechaFin]    = useState('');
+  const [errorFecha,  setErrorFecha]  = useState('');
 
   useEffect(() => {
     getProductos()
@@ -32,20 +37,35 @@ export default function KardexPage() {
     p.codigo?.toLowerCase().includes(busqueda.toLowerCase())
   );
 
-  // Cuando el usuario hace clic en un producto de la lista
+  // Seleccionar producto de la lista
   const seleccionarProducto = (producto) => {
     setCodigoSel(producto.codigo);
     setBusqueda(`${producto.codigo} — ${producto.nombre}`);
     setMostrarLista(false);
   };
 
+  // Limpiar todas las fechas
+  const limpiarFechas = () => {
+    setFechaInicio('');
+    setFechaFin('');
+    setErrorFecha('');
+  };
+
   const handleBuscar = async () => {
     if (!codigoSel) return;
+
+    // Validar rango de fechas
+    setErrorFecha('');
+    if (fechaInicio && fechaFin && fechaInicio > fechaFin) {
+      setErrorFecha('La fecha de inicio no puede ser mayor a la fecha fin.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setKardex(null);
     try {
-      const data = await getKardex(codigoSel);
+      const data = await getKardex(codigoSel, fechaInicio, fechaFin);
       setKardex(data);
     } catch {
       setError('Error al obtener el kardex del producto');
@@ -62,73 +82,131 @@ export default function KardexPage() {
         Reporte de Kardex
       </h2>
 
-      {/* Buscador con autocompletado + botón */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      {/* ── Fila de filtros ── */}
+      <div style={{
+        display: 'flex', gap: '12px', marginBottom: '8px',
+        alignItems: 'flex-end', flexWrap: 'wrap'
+      }}>
 
-        <div style={{ position: 'relative', minWidth: '320px' }}>
-          <input
-            type="text"
-            value={busqueda}
-            placeholder="Buscar por nombre o código..."
-            onChange={e => {
-              setBusqueda(e.target.value);
-              setCodigoSel('');
-              setMostrarLista(true);
-            }}
-            onFocus={() => setMostrarLista(true)}
-            onBlur={() => setTimeout(() => setMostrarLista(false), 150)}
-            style={{
-              padding: '8px 14px', borderRadius: '6px',
-              border: '1px solid #cce5ff', width: '100%',
-              fontSize: '1rem', boxSizing: 'border-box'
-            }}
-          />
+        {/* Buscador autocompletado */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <label style={{ fontSize: '0.78rem', color: '#555', fontWeight: '600' }}>
+            Producto
+          </label>
+          <div style={{ position: 'relative', minWidth: '300px' }}>
+            <input
+              type="text"
+              value={busqueda}
+              placeholder="Buscar por nombre o código..."
+              onChange={e => {
+                setBusqueda(e.target.value);
+                setCodigoSel('');
+                setMostrarLista(true);
+              }}
+              onFocus={() => setMostrarLista(true)}
+              onBlur={() => setTimeout(() => setMostrarLista(false), 150)}
+              style={{
+                padding: '8px 14px', borderRadius: '6px',
+                border: '1px solid #cce5ff', width: '100%',
+                fontSize: '1rem', boxSizing: 'border-box'
+              }}
+            />
 
-          {/* Lista desplegable de resultados */}
-          {mostrarLista && busqueda && (
-            <div style={{
-              position: 'absolute', top: '100%', left: 0, right: 0,
-              background: '#fff', border: '1px solid #cce5ff',
-              borderRadius: '6px', marginTop: '4px',
-              maxHeight: '220px', overflowY: 'auto',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10
-            }}>
-              {productosFiltrados.length === 0 ? (
-                <div style={{ padding: '10px 14px', color: '#888', fontStyle: 'italic' }}>
-                  No se encontraron productos
-                </div>
-              ) : (
-                productosFiltrados.map(p => (
-                  <div
-                    key={p.codigo}
-                    onClick={() => seleccionarProducto(p)}
-                    style={{
-                      padding: '10px 14px', cursor: 'pointer',
-                      borderBottom: '1px solid #f0f8ff',
-                      display: 'flex', justifyContent: 'space-between',
-                      alignItems: 'center', fontSize: '0.95rem'
-                    }}
-                    onMouseDown={e => e.preventDefault()} // evita que el blur dispare antes del click
-                    onMouseEnter={e => e.currentTarget.style.background = '#e8f7ff'}
-                    onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-                  >
-                    <span>
-                      <strong style={{ color: '#00aaff' }}>{p.codigo}</strong> — {p.nombre}
-                    </span>
-                    <span style={{
-                      fontSize: '0.8rem', color: '#888',
-                      background: '#f0f8ff', padding: '2px 8px', borderRadius: '10px'
-                    }}>
-                      Stock: {p.stock_actual}
-                    </span>
+            {/* Lista desplegable */}
+            {mostrarLista && busqueda && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0,
+                background: '#fff', border: '1px solid #cce5ff',
+                borderRadius: '6px', marginTop: '4px',
+                maxHeight: '220px', overflowY: 'auto',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10
+              }}>
+                {productosFiltrados.length === 0 ? (
+                  <div style={{ padding: '10px 14px', color: '#888', fontStyle: 'italic' }}>
+                    No se encontraron productos
                   </div>
-                ))
-              )}
-            </div>
-          )}
+                ) : (
+                  productosFiltrados.map(p => (
+                    <div
+                      key={p.codigo}
+                      onClick={() => seleccionarProducto(p)}
+                      style={{
+                        padding: '10px 14px', cursor: 'pointer',
+                        borderBottom: '1px solid #f0f8ff',
+                        display: 'flex', justifyContent: 'space-between',
+                        alignItems: 'center', fontSize: '0.95rem'
+                      }}
+                      onMouseDown={e => e.preventDefault()}
+                      onMouseEnter={e => e.currentTarget.style.background = '#e8f7ff'}
+                      onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                    >
+                      <span>
+                        <strong style={{ color: '#00aaff' }}>{p.codigo}</strong> — {p.nombre}
+                      </span>
+                      <span style={{
+                        fontSize: '0.8rem', color: '#888',
+                        background: '#f0f8ff', padding: '2px 8px', borderRadius: '10px'
+                      }}>
+                        Stock: {p.stock_actual}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* 🆕 Botón */}
+        {/* Fecha Inicio */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <label style={{ fontSize: '0.78rem', color: '#555', fontWeight: '600' }}>
+            Fecha Inicio
+          </label>
+          <input
+            type="date"
+            value={fechaInicio}
+            onChange={e => setFechaInicio(e.target.value)}
+            style={{
+              padding: '8px 12px', borderRadius: '6px',
+              border: `1px solid ${errorFecha ? '#dc3545' : '#cce5ff'}`,
+              fontSize: '0.95rem', color: '#333', cursor: 'pointer'
+            }}
+          />
+        </div>
+
+        {/* Fecha Fin */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <label style={{ fontSize: '0.78rem', color: '#555', fontWeight: '600' }}>
+            Fecha Fin
+          </label>
+          <input
+            type="date"
+            value={fechaFin}
+            onChange={e => setFechaFin(e.target.value)}
+            style={{
+              padding: '8px 12px', borderRadius: '6px',
+              border: `1px solid ${errorFecha ? '#dc3545' : '#cce5ff'}`,
+              fontSize: '0.95rem', color: '#333', cursor: 'pointer'
+            }}
+          />
+        </div>
+
+        {/* Botón limpiar fechas — solo aparece si hay alguna fecha seleccionada */}
+        {(fechaInicio || fechaFin) && (
+          <button
+            onClick={limpiarFechas}
+            style={{
+              background: 'transparent', color: '#888',
+              border: '1px solid #ddd', borderRadius: '6px',
+              padding: '8px 14px', cursor: 'pointer',
+              fontSize: '0.9rem', marginBottom: '1px'
+            }}
+          >
+            ✕ Limpiar fechas
+          </button>
+        )}
+
+        {/* Botón Ver Kardex */}
         <button
           onClick={handleBuscar}
           disabled={!codigoSel || loading}
@@ -136,38 +214,64 @@ export default function KardexPage() {
             background: '#00aaff', color: '#fff', border: 'none',
             borderRadius: '6px', padding: '8px 24px',
             fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem',
-            opacity: (!codigoSel || loading) ? 0.6 : 1
+            opacity: (!codigoSel || loading) ? 0.6 : 1,
+            marginBottom: '1px'
           }}
         >
           {loading ? 'Buscando...' : 'Ver Kardex'}
         </button>
       </div>
 
-      {/* Alerta de error — solo se monta si hay mensaje */}
+      {/* Error de validación de fechas */}
+      {errorFecha && (
+        <p style={{
+          color: '#dc3545', background: '#f8d7da',
+          padding: '8px 14px', borderRadius: '6px',
+          fontSize: '0.9rem', marginBottom: '12px', marginTop: '4px'
+        }}>
+          ⚠ {errorFecha}
+        </p>
+      )}
+
+      {/* Error general */}
       {error && (
         <AlertMessage texto={error} tipo="error" onClose={() => setError('')} />
       )}
 
-      {/* 🆕 Indicador de carga visible */}
+      {/* Indicador de carga */}
       {loading && (
-        <p style={{ color: '#00aaff', fontWeight: '500' }}>Cargando kardex...</p>
+        <p style={{ color: '#00aaff', fontWeight: '500', marginTop: '12px' }}>
+          Cargando kardex...
+        </p>
       )}
 
-      {/* Resultados */}
+      {/* ── Resultados ── */}
       {kardex && !loading && (
         <div>
 
           {/* Ficha del producto */}
           <div style={{
             background: '#e8f7ff', borderRadius: '10px',
-            padding: '16px 24px', marginBottom: '20px',
+            padding: '16px 24px', marginBottom: '20px', marginTop: '20px',
             display: 'flex', gap: '32px', flexWrap: 'wrap',
             borderLeft: '4px solid #00aaff'
           }}>
-            <div><strong style={{ color: '#555' }}>Producto:</strong> <span style={{ color: '#222' }}>{kardex.producto?.nombre}</span></div>
-            <div><strong style={{ color: '#555' }}>Código:</strong> <span style={{ color: '#222' }}>{kardex.producto?.codigo}</span></div>
-            <div><strong style={{ color: '#555' }}>Costo:</strong> <span style={{ color: '#222' }}>${Number(kardex.producto?.costo || 0).toFixed(2)}</span></div>
-            <div><strong style={{ color: '#555' }}>P.V.P:</strong> <span style={{ color: '#222' }}>${Number(kardex.producto?.pvp || 0).toFixed(2)}</span></div>
+            <div>
+              <strong style={{ color: '#555' }}>Producto:</strong>{' '}
+              <span style={{ color: '#222' }}>{kardex.producto?.nombre}</span>
+            </div>
+            <div>
+              <strong style={{ color: '#555' }}>Código:</strong>{' '}
+              <span style={{ color: '#222' }}>{kardex.producto?.codigo}</span>
+            </div>
+            <div>
+              <strong style={{ color: '#555' }}>Costo:</strong>{' '}
+              <span style={{ color: '#222' }}>${Number(kardex.producto?.costo || 0).toFixed(2)}</span>
+            </div>
+            <div>
+              <strong style={{ color: '#555' }}>P.V.P:</strong>{' '}
+              <span style={{ color: '#222' }}>${Number(kardex.producto?.pvp || 0).toFixed(2)}</span>
+            </div>
             <div>
               <strong style={{ color: '#555' }}>Stock Inicial:</strong>{' '}
               <span style={{ fontWeight: 'bold' }}>{kardex.stock_inicial}</span>
@@ -182,6 +286,28 @@ export default function KardexPage() {
               <strong style={{ color: '#555' }}>Movimientos:</strong>{' '}
               <span>{kardex.total_movimientos}</span>
             </div>
+
+            {/* Badge de rango de fechas aplicado */}
+            {(kardex.filtros?.fechaInicio || kardex.filtros?.fechaFin) && (
+              <div style={{
+                width: '100%', marginTop: '8px',
+                padding: '6px 12px', background: '#fff3cd',
+                borderRadius: '6px', fontSize: '0.85rem', color: '#856404'
+              }}>
+                📅 Período filtrado:{' '}
+                <strong>
+                  {kardex.filtros.fechaInicio
+                    ? new Date(kardex.filtros.fechaInicio + 'T00:00:00').toLocaleDateString('es-EC')
+                    : 'desde el inicio'}
+                </strong>
+                {' → '}
+                <strong>
+                  {kardex.filtros.fechaFin
+                    ? new Date(kardex.filtros.fechaFin + 'T00:00:00').toLocaleDateString('es-EC')
+                    : 'hasta hoy'}
+                </strong>
+              </div>
+            )}
           </div>
 
           {/* Tabla de movimientos */}
@@ -210,23 +336,26 @@ export default function KardexPage() {
                       textAlign: 'center', padding: '32px',
                       color: '#888', fontStyle: 'italic'
                     }}>
-                      Este producto no tiene movimientos registrados
+                      No hay movimientos en el período seleccionado
                     </td>
                   </tr>
                 ) : (
                   kardex.movimientos.map((mov, i) => {
                     const color = TIPO_COLORES[mov.tipo_movimiento] || { bg: '#e2e3e5', text: '#555' };
                     return (
-                      <tr key={mov.id_movimiento ?? i}
+                      <tr
+                        key={mov.id_movimiento ?? i}
                         style={{
                           borderBottom: '1px solid #e0f0ff',
                           background: i % 2 === 0 ? '#fff' : '#f9fdff'
                         }}
                       >
                         <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', color: '#555' }}>
-                          {mov.fecha ? new Date(mov.fecha).toLocaleDateString('es-EC', {
-                            day: '2-digit', month: '2-digit', year: 'numeric'
-                          }) : '---'}
+                          {mov.fecha
+                            ? new Date(mov.fecha).toLocaleDateString('es-EC', {
+                                day: '2-digit', month: '2-digit', year: 'numeric'
+                              })
+                            : '---'}
                         </td>
                         <td style={{ padding: '10px 14px' }}>
                           <span style={{
