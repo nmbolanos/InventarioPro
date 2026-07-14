@@ -66,6 +66,9 @@ const getKardex = async (req, res) => {
       ? movimientos[movimientos.length - 1].stock_resultante
       : producto.stock_actual;
 
+    // Invertir el array para mostrar del más reciente al más antiguo
+    movimientos.reverse();
+
     res.json({
       producto,
       stock_inicial: stockInicial,

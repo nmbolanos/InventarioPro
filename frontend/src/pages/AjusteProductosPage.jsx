@@ -95,7 +95,8 @@ const AjusteProductosPage = () => {
     const cargarHistorial = async () => {
         try {
             const cabeceras = await getAjustesCabecera();
-            const sorted = [...cabeceras].sort((a, b) => a.numero_ajuste.localeCompare(b.numero_ajuste));
+            // Ordenar cabeceras por número de ajuste DESC (del más reciente al más antiguo)
+            const sorted = [...cabeceras].sort((a, b) => b.numero_ajuste.localeCompare(a.numero_ajuste));
             setHistorialAjustes(sorted);
             return cabeceras;
         } catch (err) {

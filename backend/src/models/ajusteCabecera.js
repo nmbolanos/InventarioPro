@@ -3,7 +3,7 @@ const pool = require('../config/db');
 const AjusteCabecera = {
     // Obtener todas las cabeceras de ajuste
     obtenerTodos: async () => {
-        const query = 'SELECT * FROM ajuste_cabecera ORDER BY fecha DESC';
+        const query = 'SELECT * FROM ajuste_cabecera ORDER BY fecha DESC, numero_ajuste DESC';
         const { rows } = await pool.query(query);
         return rows;
     },

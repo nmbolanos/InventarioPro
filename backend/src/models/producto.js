@@ -2,7 +2,7 @@ const pool = require('../config/db');
 
 class Producto {
     static async getAll() {
-        const query = 'SELECT * FROM producto ORDER BY codigo ASC';
+        const query = 'SELECT * FROM producto ORDER BY codigo DESC';
         const result = await pool.query(query);
         return result.rows;
     }
@@ -13,29 +13,12 @@ class Producto {
         return result.rows[0];
     }
 
-    static async generarSiguienteCodigo() {
-        const query = `
-            SELECT codigo 
-            FROM producto 
-            WHERE codigo LIKE 'PRD-%' 
-            ORDER BY codigo DESC 
-            LIMIT 1
-        `;
-        const result = await pool.query(query);
-        if (result.rows.length > 0) {
-            const lastCode = result.rows[0].codigo;     
-            const numberPart = parseInt(lastCode.replace('PRD-', ''), 10);
-            const nextNumber = numberPart + 1;
-            return `PRD-${nextNumber.toString().padStart(4, '0')}`;
-        }
-        return 'PRD-0001';
-    }
-
     static async create(producto) {
         let { codigo, nombre, descripcion, graba_iva, costo, pvp, estado } = producto;
         
+        // Si no viene código, lo seteamos a null para que el trigger de PostgreSQL lo genere (ej: PRD-0001)
         if (!codigo || codigo.trim() === '') {
-            codigo = await this.generarSiguienteCodigo();
+            codigo = null;
         }
 
         const query = `

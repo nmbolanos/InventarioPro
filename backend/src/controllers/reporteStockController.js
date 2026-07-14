@@ -15,7 +15,7 @@ const getReporteStock = async (req, res) => {
          stock_actual,
          ROUND((stock_actual * costo)::NUMERIC, 2) AS valor_inventario
        FROM producto
-       ORDER BY nombre ASC`
+       ORDER BY codigo DESC`
     );
 
     const productos = result.rows;

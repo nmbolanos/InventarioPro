@@ -11,7 +11,7 @@ import {
   getProductosMasVendidos 
 } from '../services/dashboardService';
 
-const COLOR_PRIMARIO = '#c21111';
+const COLOR_PRIMARIO = '#d10a11'; // Rojo UTN oficial
 
 export default function HomePage() {
   const [data, setData] = useState(null);
@@ -83,12 +83,16 @@ export default function HomePage() {
   const { metricas, topProductos, distribucionEstado, alertasReposicion } = data;
 
   return (
-    <div className="container-fluid py-4 px-4">
+    <div className="container-fluid py-4 px-4" style={{ backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
 
       {/* Título */}
-      <h2 className="fw-bold mb-4" style={{ color: COLOR_PRIMARIO }}>
-        Dashboard de Inventario
-      </h2>
+      <div style={{ marginBottom: '28px', paddingBottom: '18px', borderBottom: '2px solid #e0e0e0', position: 'relative' }}>
+        <div style={{ position: 'absolute', bottom: '-2px', left: 0, width: '60px', height: '2px', backgroundColor: '#d10a11', borderRadius: '2px' }} />
+        <h2 style={{ margin: 0, color: '#1a1a1a', fontWeight: '800', fontSize: '22px', fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
+          🏠 Dashboard de Inventario
+        </h2>
+        <p style={{ margin: '4px 0 0 0', color: '#666', fontSize: '13px' }}>Vista general del sistema de inventario</p>
+      </div>
 
       {/* ===== Tarjetas de métricas ===== */}
       <div className="row g-3 mb-4">
@@ -294,7 +298,7 @@ export default function HomePage() {
     <div className="table-responsive">
       <table className="table table-hover align-middle mb-0">
         <thead>
-          <tr className="table-light">
+            <tr className="table-dark">
             <th>Código</th>
             <th>Producto</th>
             <th>Stock Actual</th>

@@ -21,7 +21,7 @@ const ProductosPage = () => {
 
     // Sort State
     const [sortBy, setSortBy] = useState('codigo');
-    const [sortOrder, setSortOrder] = useState('ASC');
+    const [sortOrder, setSortOrder] = useState('DESC');
 
     const mostrarMensaje = (texto, tipo) => {
         setMensaje({ texto, tipo });

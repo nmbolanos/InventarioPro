@@ -89,8 +89,8 @@ const LoginPage = () => {
       <div className="login-card card">
         <div className="login-header">
           <div className="brand-logo">📦</div>
-          <h2>InventarioPro</h2>
-          <p>Módulo de Control de Inventario</p>
+          <h2>Módulo Inventario</h2>
+          <p>Gestión de Productos y Stock</p>
         </div>
 
         {error && (

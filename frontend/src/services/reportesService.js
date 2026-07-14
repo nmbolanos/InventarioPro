@@ -1,19 +1,18 @@
+import axios from 'axios';
+
 const API_URL = '/api';
 
 export const getProductos = async () => {
-  const res = await fetch(`${API_URL}/reportes/kardex/productos`);
-  if (!res.ok) throw new Error('Error al obtener productos');
-  return res.json();
+  const res = await axios.get(`${API_URL}/kardex/productos`);
+  return res.data;
 };
 
 export const getKardex = async (codigo) => {
-  const res = await fetch(`${API_URL}/reportes/kardex/${codigo}`);
-  if (!res.ok) throw new Error('Error al obtener kardex');
-  return res.json();
+  const res = await axios.get(`${API_URL}/kardex/${codigo}`);
+  return res.data;
 };
 
 export const getReporteStock = async () => {
-  const res = await fetch(`${API_URL}/reportes/stock`);
-  if (!res.ok) throw new Error('Error al obtener reporte de stock');
-  return res.json();
+  const res = await axios.get(`${API_URL}/stock`);
+  return res.data;
 };

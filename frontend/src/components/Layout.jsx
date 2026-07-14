@@ -21,35 +21,38 @@ const Layout = () => {
         <div className="layout-container">
             <aside className="sidebar">
                 <div className="sidebar-header">
-                    <h2>Inventario<span>Pro</span></h2>
+                    <h2>Módulo <span>Inventario</span></h2>
+                    <span className="sidebar-subtitle">UTN — Sistema de Inventario</span>
                 </div>
                 <nav className="sidebar-nav">
                     <ul>
+                        <li className="sidebar-nav-section">General</li>
                         <li>
                             <NavLink to="/" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} end>
-                                Inicio
+                                🏠 Inicio
                             </NavLink>
                         </li>
                         <li>
                             <NavLink to="/productos" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                                Administración de Productos
+                                📦 Administración de Productos
                             </NavLink>
                         </li>
                         <li>
                             <NavLink to="/ajustes" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                                Ajuste de Productos
+                                🔧 Ajuste de Productos
                             </NavLink>
                         </li>
                         {isSupervisor && (
                             <>
+                                <li className="sidebar-nav-section">Reportes</li>
                                 <li>
                                     <NavLink to="/kardex" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                                        Reporte Kardex
+                                        📊 Reporte Kardex
                                     </NavLink>
                                 </li>
                                 <li>
                                     <NavLink to="/reporte-stock" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                                        Reporte de Stock
+                                        📈 Reporte de Stock
                                     </NavLink>
                                 </li>
                             </>
@@ -67,7 +70,7 @@ const Layout = () => {
                         </div>
                     </div>
                     <button className="btn-logout" onClick={handleLogout} title="Cerrar Sesión del sistema">
-                        Cerrar Sesión 🚪
+                        🚪 Cerrar Sesión
                     </button>
                 </div>
             </aside>

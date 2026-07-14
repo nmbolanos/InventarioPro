@@ -71,3 +71,28 @@ CREATE OR REPLACE TRIGGER trg_asignar_numero_ajuste
 BEFORE INSERT ON ajuste_cabecera
 FOR EACH ROW
 EXECUTE FUNCTION fn_generar_numero_ajuste();
+
+-- ==============================================================================
+-- 4. FUNCIÓN Y TRIGGER PARA AUTOGENERAR "PRD-XXXX"
+-- ==============================================================================
+
+-- Secuencia para el conteo automático de productos (1, 2, 3...)
+CREATE SEQUENCE IF NOT EXISTS seq_numero_producto START 1;
+
+-- Función que formatea el código del producto
+CREATE OR REPLACE FUNCTION fn_generar_codigo_producto()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Solo genera el código si el backend no envía uno explícitamente
+    IF NEW.codigo IS NULL OR NEW.codigo = '' THEN
+        NEW.codigo := 'PRD-' || LPAD(nextval('seq_numero_producto')::TEXT, 4, '0');
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger que se dispara antes de insertar un producto
+CREATE OR REPLACE TRIGGER trg_asignar_codigo_producto
+BEFORE INSERT ON producto
+FOR EACH ROW
+EXECUTE FUNCTION fn_generar_codigo_producto();
