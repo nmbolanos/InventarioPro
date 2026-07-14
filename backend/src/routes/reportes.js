@@ -5,10 +5,15 @@ const { getReporteStock }         = require('../controllers/reporteStockControll
 const auth = require('../middleware/auth');
 const { checkRole } = require('../middleware/roles');
 
+// Endpoint para módulos externos (Compras y Facturación)
+// Solo requiere JWT válido, NO exige un rol específico de Inventario
+router.post('/kardex/movimientos', auth, registrarMovimientos);
+
+// A partir de aquí: JWT + rol INV_SUPERVISOR obligatorio
 router.use(auth);
 router.use(checkRole(['INV_SUPERVISOR']));
 
-// HU5 — Kardex
+// HU5 — Kardex (solo Supervisor)
 router.get('/kardex/productos',       getProductos);
 router.get('/kardex/:codigoProducto', getKardex);
 
