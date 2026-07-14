@@ -26,6 +26,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/productos", productoRoutes);
 app.use("/api/ajustes/cabecera", ajusteCabeceraRoutes);
 app.use("/api/ajustes/detalle", ajusteDetalleRoutes);
+app.use("/api", reportesRoutes);
 
 // Ruta principal
 app.get("/", (req, res) => {
