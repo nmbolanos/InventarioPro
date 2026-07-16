@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { getProductos, getKardex } from '../services/reportesService';
 import AlertMessage from '../components/AlertMessage';
 
@@ -229,8 +229,10 @@ export default function KardexPage() {
                         </td>
                         <td style={{ padding: '11px 14px', color: '#1a1a1a', fontSize: '13px' }}>{mov.documento_referencia}</td>
                         <td style={{ padding: '11px 14px', color: '#666', fontSize: '13px', maxWidth: '200px' }}>{mov.descripcion}</td>
-                        <td style={{ padding: '11px 14px', fontWeight: '700', color: Number(mov.cantidad) < 0 ? '#a80008' : '#1a7a1a', fontSize: '14px' }}>
-                          {Number(mov.cantidad) > 0 ? `+${mov.cantidad}` : mov.cantidad}
+                        <td style={{ padding: '11px 14px', fontWeight: '700', color: ['VENTA', 'EGRESO', 'DEVOLUCION_COMPRA'].includes(mov.tipo_movimiento) || Number(mov.cantidad) < 0 ? '#a80008' : '#1a7a1a', fontSize: '14px' }}>
+                          {['VENTA', 'EGRESO', 'DEVOLUCION_COMPRA'].includes(mov.tipo_movimiento) 
+                            ? `-${Math.abs(mov.cantidad)}` 
+                            : `+${Math.abs(mov.cantidad)}`}
                         </td>
                         <td style={{ padding: '11px 14px', color: '#1a1a1a', fontSize: '13px' }}>${Number(mov.costo_unitario || 0).toFixed(2)}</td>
                         <td style={{ padding: '11px 14px', color: '#1a1a1a', fontSize: '13px' }}>${Number(mov.valor_total || 0).toFixed(2)}</td>
