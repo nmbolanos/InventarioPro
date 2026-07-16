@@ -22,6 +22,12 @@ const options = {
                     scheme: 'bearer',
                     bearerFormat: 'JWT',
                     description: 'Ingrese el token JWT obtenido del endpoint POST /api/auth/login. Formato: Bearer <token>'
+                },
+                ApiKeyAuth: {
+                    type: 'apiKey',
+                    in: 'header',
+                    name: 'x-api-key',
+                    description: 'Clave API exclusiva para módulos externos (Compras y Facturación)'
                 }
             }
         },

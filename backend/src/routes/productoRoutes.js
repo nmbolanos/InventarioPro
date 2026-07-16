@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const productoController = require('../controllers/productoController');
 const auth = require('../middleware/auth');
+const apiKeyAuth = require('../middleware/apiKeyAuth');
 const { checkRole } = require('../middleware/roles');
 
 /**
@@ -49,12 +50,14 @@ const { checkRole } = require('../middleware/roles');
  *   get:
  *     summary: Obtiene el catálogo de productos activos (API de Salida)
  *     tags: [Catálogo]
+ *     security:
+ *       - ApiKeyAuth: []
  *     responses:
  *       200:
  *         description: Lista de productos activos con su stock y % IVA
  */
-// Se deja pública la API de Salida para que el módulo de Facturación/Ventas pueda consumirla directamente
-router.get('/catalogo', productoController.getCatalogo);
+// API de Salida para Facturación/Ventas protegida con API Key
+router.get('/catalogo', apiKeyAuth, productoController.getCatalogo);
 
 /**
  * @swagger

@@ -3,11 +3,12 @@ const router  = express.Router();
 const { getProductos, getKardex, registrarMovimientos } = require('../controllers/kardexController');
 const { getReporteStock }         = require('../controllers/reporteStockController');
 const auth = require('../middleware/auth');
+const apiKeyAuth = require('../middleware/apiKeyAuth');
 const { checkRole } = require('../middleware/roles');
 
 // Endpoint para módulos externos (Compras y Facturación)
-// Solo requiere JWT válido, NO exige un rol específico de Inventario
-router.post('/kardex/movimientos', auth, registrarMovimientos);
+// Requiere la llave API definida en EXTERNAL_API_KEY
+router.post('/kardex/movimientos', apiKeyAuth, registrarMovimientos);
 
 // A partir de aquí: JWT + rol INV_SUPERVISOR obligatorio
 router.use(auth);
@@ -23,6 +24,8 @@ router.get('/kardex/:codigoProducto', getKardex);
  *   post:
  *     summary: Registra una compra o venta y afecta el stock del inventario
  *     tags: [Movimientos y Kardex]
+ *     security:
+ *       - ApiKeyAuth: []
  *     requestBody:
  *       required: true
  *       content:
