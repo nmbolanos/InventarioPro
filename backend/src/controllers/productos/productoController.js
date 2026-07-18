@@ -1,9 +1,11 @@
-const Producto = require('../models/producto');
-const ProductoDTO = require('../models/ProductoDTO');
+const prisma = require('../../config/prisma');
+const ProductoDTO = require('./ProductoDTO');
 
 const getAllProductos = async (req, res) => {
     try {
-        const productos = await Producto.getAll();
+        const productos = await prisma.producto.findMany({
+            orderBy: { codigo: 'desc' }
+        });
         res.json({ success: true, data: productos });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Error al obtener los productos.', error: error.message });
@@ -13,7 +15,9 @@ const getAllProductos = async (req, res) => {
 const getProductoByCodigo = async (req, res) => {
     try {
         const { codigo } = req.params;
-        const producto = await Producto.getByCodigo(codigo);
+        const producto = await prisma.producto.findUnique({
+            where: { codigo }
+        });
         if (!producto) {
             return res.status(404).json({ success: false, message: 'Producto no encontrado.' });
         }
@@ -25,20 +29,21 @@ const getProductoByCodigo = async (req, res) => {
 
 const createProducto = async (req, res) => {
     try {
-        const validation = ProductoDTO.validate(req.body, true); // true = isCreating
+        const validation = ProductoDTO.validate(req.body, true);
         if (!validation.isValid) {
             return res.status(400).json({ success: false, message: 'Errores de validación', errors: validation.errors });
         }
 
-        // Check for duplicate code only if a custom code was provided
         if (validation.data.codigo) {
-            const existing = await Producto.getByCodigo(validation.data.codigo);
+            const existing = await prisma.producto.findUnique({ where: { codigo: validation.data.codigo } });
             if (existing) {
                 return res.status(409).json({ success: false, message: 'El código de producto ya existe. Utilice otro.' });
             }
         }
 
-        const nuevoProducto = await Producto.create(validation.data);
+        const nuevoProducto = await prisma.producto.create({
+            data: validation.data
+        });
         res.status(201).json({ success: true, message: 'Producto creado exitosamente.', data: nuevoProducto });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Error al crear el producto.', error: error.message });
@@ -53,18 +58,26 @@ const updateProducto = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Errores de validación', errors: validation.errors });
         }
 
-        // If trying to change the code to a new one, check if the new code exists
-        if (codigo !== validation.data.codigo) {
-            const existing = await Producto.getByCodigo(validation.data.codigo);
+        if (codigo !== validation.data.codigo && validation.data.codigo) {
+            const existing = await prisma.producto.findUnique({ where: { codigo: validation.data.codigo } });
             if (existing) {
                 return res.status(409).json({ success: false, message: 'El nuevo código de producto ya existe.' });
             }
         }
 
-        const productoActualizado = await Producto.update(codigo, validation.data);
-        if (!productoActualizado) {
+        // Fetch to ensure it exists
+        const existingToUpdate = await prisma.producto.findUnique({ where: { codigo } });
+        if (!existingToUpdate) {
              return res.status(404).json({ success: false, message: 'Producto no encontrado para actualizar.' });
         }
+
+        const dataToUpdate = { ...validation.data };
+        
+        // Prisma update
+        const productoActualizado = await prisma.producto.update({
+            where: { codigo },
+            data: dataToUpdate
+        });
         
         res.json({ success: true, message: 'Producto actualizado exitosamente.', data: productoActualizado });
     } catch (error) {
@@ -75,25 +88,39 @@ const updateProducto = async (req, res) => {
 const desactivarProducto = async (req, res) => {
     try {
         const { codigo } = req.params;
-        const productoDesactivado = await Producto.desactivar(codigo);
-        if (!productoDesactivado) {
+        const existingToUpdate = await prisma.producto.findUnique({ where: { codigo } });
+        if (!existingToUpdate) {
              return res.status(404).json({ success: false, message: 'Producto no encontrado para desactivar.' });
         }
+
+        const productoDesactivado = await prisma.producto.update({
+            where: { codigo },
+            data: { estado: 'Inactivo' }
+        });
+        
         res.json({ success: true, message: 'Producto desactivado (inactivo) exitosamente.', data: productoDesactivado });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Error al desactivar el producto.', error: error.message });
     }
 };
 
-// API de Salida
 const getCatalogo = async (req, res) => {
     try {
-        const catalogo = await Producto.getCatalogo();
+        const catalogo = await prisma.producto.findMany({
+            where: { estado: 'Activo' },
+            select: {
+                codigo: true,
+                nombre: true,
+                descripcion: true,
+                stock_actual: true,
+                pvp: true,
+                graba_iva: true
+            },
+            orderBy: { nombre: 'asc' }
+        });
         
-        // Obtener el porcentaje de IVA del archivo .env (por defecto 15 si no existe)
         const ivaPorcentaje = process.env.IVA_PORCENTAJE ? parseFloat(process.env.IVA_PORCENTAJE) : 15;
 
-        // Inyectar el valor del IVA a los productos que sí graban IVA
         const catalogoConIva = catalogo.map(producto => ({
             ...producto,
             porcentaje_iva_aplicado: producto.graba_iva ? ivaPorcentaje : 0

@@ -1,26 +1,3 @@
-const checkRole = (allowedRoles) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({ success: false, message: 'Usuario no autenticado.' });
-    }
-
-    // Extraemos y limpiamos los roles del usuario, manejando posibles espacios en blanco (ej. "INV_BODEGUERO ")
-    const userRoles = (req.user.roles || []).map(role => typeof role === 'string' ? role.trim() : '');
-
-    // Comprobamos si el usuario tiene al menos uno de los roles permitidos
-    const hasRole = allowedRoles.some(allowed => userRoles.includes(allowed.trim()));
-
-    if (!hasRole) {
-      return res.status(403).json({
-        success: false,
-        message: `Acceso denegado. Requiere uno de los siguientes roles: [${allowedRoles.join(', ')}]`
-      });
-    }
-
-    next();
-  };
-};
-
 const checkPermission = (allowedPermissions) => {
   return (req, res, next) => {
     if (!req.user) {
@@ -45,6 +22,5 @@ const checkPermission = (allowedPermissions) => {
 };
 
 module.exports = {
-  checkRole,
   checkPermission
 };

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const ajusteDetalleController = require('../controllers/ajusteDetalle');
+const ajusteDetalleController = require('../controllers/ajustes/ajusteDetalleController');
 const auth = require('../middleware/auth');
 const { checkPermission } = require('../middleware/roles');
 

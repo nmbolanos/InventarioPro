@@ -1,10 +1,10 @@
 const express = require('express');
 const router  = express.Router();
-const { getProductos, getKardex, registrarMovimientos } = require('../controllers/kardexController');
-const { getReporteStock }         = require('../controllers/reporteStockController');
+const { getProductos, getKardex, registrarMovimientos } = require('../controllers/reportes/kardexController');
+const { getReporteStock }         = require('../controllers/reportes/reporteStockController');
 const auth = require('../middleware/auth');
 const apiKeyAuth = require('../middleware/apiKeyAuth');
-const { checkRole, checkPermission } = require('../middleware/roles');
+const { checkPermission } = require('../middleware/roles');
 
 // Endpoint para módulos externos (Compras y Facturación)
 // Requiere la llave API definida en EXTERNAL_API_KEY

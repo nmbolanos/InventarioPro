@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const ajusteCabeceraController = require('../controllers/ajusteCabecera');
+const ajusteCabeceraController = require('../controllers/ajustes/ajusteCabeceraController');
 const auth = require('../middleware/auth');
 const { checkPermission } = require('../middleware/roles');
 

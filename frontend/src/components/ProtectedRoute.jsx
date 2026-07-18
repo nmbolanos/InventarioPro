@@ -2,7 +2,7 @@ import React from 'react';
 import { Lock } from 'lucide-react';
 import { Navigate, Outlet, useNavigate } from 'react-router-dom';
 
-const ProtectedRoute = ({ allowedRoles = [], allowedPermissions = [] }) => {
+const ProtectedRoute = ({ allowedPermissions = [] }) => {
   const token = localStorage.getItem('token');
   const userStr = localStorage.getItem('user');
 
@@ -11,18 +11,7 @@ const ProtectedRoute = ({ allowedRoles = [], allowedPermissions = [] }) => {
   }
 
   const user = JSON.parse(userStr);
-  const userRoles = user.roles || [];
   const userPermissions = user.permissions || [];
-
-  // Verificar si tiene al menos uno de los roles permitidos (case-insensitive & trimmed)
-  if (allowedRoles.length > 0) {
-    const hasRole = allowedRoles.some((role) =>
-      userRoles.map((r) => r.toLowerCase().trim()).includes(role.toLowerCase().trim())
-    );
-    if (!hasRole) {
-      return <AccessDeniedView />;
-    }
-  }
 
   // Verificar si tiene al menos uno de los permisos permitidos (case-insensitive & trimmed)
   if (allowedPermissions.length > 0) {

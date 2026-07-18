@@ -1,6 +1,6 @@
-const express = require("express");
+require('dotenv').config();
+const express = require('express');
 const cors = require("cors");
-const pool = require("./config/db");
 const reportesRoutes = require('./routes/reportes');
 
 // Importar rutas y middlewares
@@ -37,14 +37,16 @@ app.get("/", (req, res) => {
     res.send("API Inventario funcionando");
 });
 
-// Ruta para probar PostgreSQL
+// Ruta para probar PostgreSQL con Prisma
 app.get("/probar-db", async (req, res) => {
     try {
-        const resultado = await pool.query("SELECT NOW()");
+        const { PrismaClient } = require('@prisma/client');
+        const prisma = new PrismaClient();
+        const resultado = await prisma.$queryRaw`SELECT NOW()`;
 
         res.json({
-            mensaje: "Conectado a PostgreSQL correctamente",
-            fecha: resultado.rows[0]
+            mensaje: "Conectado a PostgreSQL correctamente (vía Prisma)",
+            fecha: resultado[0]
         });
 
     } catch (error) {

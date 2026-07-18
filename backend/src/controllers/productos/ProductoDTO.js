@@ -29,7 +29,7 @@ class ProductoDTO {
             isValid: errors.length === 0,
             errors,
             data: errors.length === 0 ? {
-                codigo: data.codigo ? data.codigo.trim() : '',
+                codigo: data.codigo && data.codigo.trim() !== '' ? data.codigo.trim() : undefined,
                 nombre: data.nombre.trim(),
                 descripcion: data.descripcion ? data.descripcion.trim() : null,
                 graba_iva: data.graba_iva === true || data.graba_iva === 'true',

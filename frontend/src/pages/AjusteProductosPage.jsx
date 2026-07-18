@@ -78,19 +78,20 @@ const AjusteProductosPage = () => {
         setFecha(new Date(cabeceraCompleta.fecha).toISOString().substring(0, 10));
         setDescripcion(cabeceraCompleta.descripcion || '');
         setDetalles((cabeceraCompleta.detalles || []).map((item) => {
-            const pvpParsed = parseFloat(item.pvp || 0);
+            const pvpParsed = parseFloat(item.producto?.pvp || 0);
             const cantidadParsed = parseInt(item.cantidad || 0, 10);
-            const subtotalParsed = item.subtotal !== undefined ? parseFloat(item.subtotal) : (Math.abs(cantidadParsed) * pvpParsed);
+            const subtotalParsed = Math.abs(cantidadParsed) * pvpParsed;
+            const stockActual = parseInt(item.producto?.stock_actual || 0, 10);
             return {
                 id_detalle: item.id_detalle,
                 codigo: item.codigo_producto,
-                nombre: item.producto_nombre || item.codigo_producto,
-                stock_actual: parseInt(item.stock_actual || 0, 10),
+                nombre: item.producto?.nombre || item.codigo_producto,
+                stock_actual: stockActual,
                 pvp: pvpParsed,
-                graba_iva: Boolean(item.graba_iva),
-                porcentaje_iva_aplicado: parseFloat(item.porcentaje_iva_aplicado || 0),
+                graba_iva: Boolean(item.producto?.graba_iva),
+                porcentaje_iva_aplicado: parseFloat(item.producto?.porcentaje_iva_aplicado || 0),
                 cantidad: cantidadParsed,
-                stock_resultante: parseInt(item.stock_resultante ?? (item.stock_actual ?? 0), 10) + cantidadParsed,
+                stock_resultante: stockActual + cantidadParsed, // Asumiendo que stock_actual ya está actualizado en bd, pero en la UI para la fila del formulario sumamos/restamos para mostrar el resultado "después" si estuviéramos aplicando de nuevo, o si es edición. Nota: en Postgres, la tabla producto ya tiene el stock modificado, así que mostrar "stock actual" aquí refleja la BD de hoy, no el histórico.
                 subtotal: subtotalParsed
             };
         }));
@@ -500,7 +501,18 @@ const AjusteProductosPage = () => {
         }
     };
 
-    const handleImprimir = async () => {
+    const handleImprimir = async (numero_ajuste) => {
+        try {
+            const blob = await imprimirAjuste(numero_ajuste);
+            const url = window.URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            cargarCabeceras(); // Refresh to update "impreso" status
+        } catch (error) {
+            setMensajeAlerta({ tipo: 'error', texto: error.message || 'Error al imprimir' });
+        }
+    };
+
+    const handleImprimirActual = async () => {
         if (!documentoGuardado?.numero_ajuste) {
             setMensaje({ texto: 'Primero debe guardar el documento antes de imprimir.', tipo: 'error' });
             return;
@@ -782,24 +794,24 @@ const AjusteProductosPage = () => {
 
                     {/* FILTROS DE HISTORIAL */}
                     <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '20px', width: '100%' }}>
-                        <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: '140px' }}>
-                            <label style={{ fontSize: '14px', marginBottom: '4px', display: 'block' }}>Fecha Desde</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#666', marginLeft: '4px' }}>Desde</label>
                             <input
                                 type="date"
                                 value={fechaDesde}
+                                max={new Date().toISOString().split('T')[0]}
                                 onChange={(e) => { setFechaDesde(e.target.value); setPaginaActual(1); }}
-                                style={{ height: '38px', padding: '0 12px', width: '100%' }}
-                                max={new Date().toISOString().substring(0, 10)}
+                                style={{ padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #e0e0e0', fontSize: '14px', background: '#fafafa' }}
                             />
                         </div>
-                        <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: '140px' }}>
-                            <label style={{ fontSize: '14px', marginBottom: '4px', display: 'block' }}>Fecha Hasta</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: '#666', marginLeft: '4px' }}>Hasta</label>
                             <input
                                 type="date"
                                 value={fechaHasta}
+                                max={new Date().toISOString().split('T')[0]}
                                 onChange={(e) => { setFechaHasta(e.target.value); setPaginaActual(1); }}
-                                style={{ height: '38px', padding: '0 12px', width: '100%' }}
-                                max={new Date().toISOString().substring(0, 10)}
+                                style={{ padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #e0e0e0', fontSize: '14px', background: '#fafafa' }}
                             />
                         </div>
                         
@@ -1139,12 +1151,12 @@ const AjusteProductosPage = () => {
                                         </tr>
                                     ) : (
                                         ajusteDetallesView.detalles.map((d, i) => {
-                                            const pvp = parseFloat(d.pvp || 0);
-                                            const subtotal = d.subtotal !== undefined ? parseFloat(d.subtotal) : (Math.abs(parseInt(d.cantidad || 0, 10)) * pvp);
+                                            const pvp = parseFloat(d.producto?.pvp || 0);
+                                            const subtotal = Math.abs(parseInt(d.cantidad || 0, 10)) * pvp;
                                             return (
                                                 <tr key={i}>
                                                     <td>{d.codigo_producto}</td>
-                                                    <td>{d.producto_nombre || d.codigo_producto}</td>
+                                                    <td>{d.producto?.nombre || d.codigo_producto}</td>
                                                     <td style={{ fontWeight: 'bold', color: d.cantidad < 0 ? 'var(--error-color)' : 'var(--primary-hover)' }}>
                                                         {d.cantidad > 0 ? `+${d.cantidad}` : d.cantidad}
                                                     </td>

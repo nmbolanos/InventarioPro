@@ -131,6 +131,8 @@
     background:#fff; border:1px solid #e0e0e0; padding:6px 12px;
     font-size:13px; border-radius:6px; cursor:pointer; transition:all 0.2s;
     font-family:var(--font-family);
+    display: inline-flex; align-items: center; justify-content: center;
+    text-align: center;
 }
 .pagination-button:hover:not(:disabled) { background:#d10a11; color:#fff; border-color:#d10a11; transform:translateY(-1px); }
 .pagination-button:disabled { cursor:not-allowed; opacity:0.4; }

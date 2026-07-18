@@ -6,7 +6,7 @@ const {
   getDashboard, 
   getMovimientosTemporales, 
   getProductosMasVendidos 
-} = require('../controllers/dashboardController');
+} = require('../controllers/dashboard/dashboardController');
 
 router.use(auth);
 router.use(checkPermission(['INV_REPORTES']));
