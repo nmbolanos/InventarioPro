@@ -1,5 +1,4 @@
 const pool = require('../config/db');
-
 class Producto {
     static async getAll() {
         const query = 'SELECT * FROM producto ORDER BY codigo DESC';

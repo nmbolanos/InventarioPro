@@ -77,7 +77,7 @@ const getMovimientosTemporales = async (req, res) => {
       `SELECT 
          ${formatoFecha} AS periodo,
          tipo_movimiento,
-         SUM(cantidad) AS total_cantidad,
+         SUM(ABS(cantidad)) AS total_cantidad,,
          SUM(valor_total) AS total_valor
        FROM movimiento_kardex
        WHERE tipo_movimiento IN ('COMPRA', 'VENTA')
@@ -116,7 +116,7 @@ const getProductosMasVendidos = async (req, res) => {
       `SELECT 
          p.codigo,
          p.nombre,
-         SUM(mk.cantidad) AS total_vendido
+         SUM(ABS(mk.cantidad)) AS total_vendido
        FROM movimiento_kardex mk
        JOIN producto p ON p.codigo = mk.codigo_producto
        WHERE mk.tipo_movimiento = 'VENTA'

@@ -17,6 +17,11 @@ export default function KardexPage() {
   const [busqueda,    setBusqueda]    = useState('');
   const [mostrarLista,setMostrarLista]= useState(false);
 
+  // Filtros de fecha
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin,    setFechaFin]    = useState('');
+  const [errorFecha,  setErrorFecha]  = useState('');
+
   useEffect(() => {
     getProductos()
       .then(setProductos)
@@ -34,13 +39,28 @@ export default function KardexPage() {
     setMostrarLista(false);
   };
 
+  // Limpiar todas las fechas
+  const limpiarFechas = () => {
+    setFechaInicio('');
+    setFechaFin('');
+    setErrorFecha('');
+  };
+
   const handleBuscar = async () => {
     if (!codigoSel) return;
+
+    // Validar rango de fechas
+    setErrorFecha('');
+    if (fechaInicio && fechaFin && fechaInicio > fechaFin) {
+      setErrorFecha('La fecha de inicio no puede ser mayor a la fecha fin.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setKardex(null);
     try {
-      const data = await getKardex(codigoSel);
+      const data = await getKardex(codigoSel, fechaInicio, fechaFin);
       setKardex(data);
     } catch {
       setError('Error al obtener el kardex del producto');
@@ -62,7 +82,7 @@ export default function KardexPage() {
         </h2>
       </div>
 
-      {/* Buscador con autocompletado */}
+      {/* Buscador con autocompletado y Filtros */}
       <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', minWidth: '340px', flex: 1 }}>
           <input
@@ -128,22 +148,80 @@ export default function KardexPage() {
           )}
         </div>
 
+        {/* Fecha Inicio */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <input
+            type="date"
+            value={fechaInicio}
+            onChange={e => setFechaInicio(e.target.value)}
+            style={{
+              padding: '9px 12px', borderRadius: '8px',
+              border: `1.5px solid ${errorFecha ? '#d10a11' : '#e0e0e0'}`,
+              fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+              fontSize: '14px', color: '#333', cursor: 'pointer',
+              background: '#fafafa', height: '40px', boxSizing: 'border-box'
+            }}
+          />
+        </div>
+
+        {/* Fecha Fin */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <input
+            type="date"
+            value={fechaFin}
+            onChange={e => setFechaFin(e.target.value)}
+            style={{
+              padding: '9px 12px', borderRadius: '8px',
+              border: `1.5px solid ${errorFecha ? '#d10a11' : '#e0e0e0'}`,
+              fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+              fontSize: '14px', color: '#333', cursor: 'pointer',
+              background: '#fafafa', height: '40px', boxSizing: 'border-box'
+            }}
+          />
+        </div>
+
+        {/* Botón limpiar fechas */}
+        {(fechaInicio || fechaFin) && (
+          <button
+            onClick={limpiarFechas}
+            style={{
+              background: 'transparent', color: '#888',
+              border: '1.5px solid #ddd', borderRadius: '8px',
+              padding: '0 14px', cursor: 'pointer',
+              fontSize: '13px', height: '40px', boxSizing: 'border-box'
+            }}
+          >
+            ✕ Limpiar
+          </button>
+        )}
+
         <button
           onClick={handleBuscar}
           disabled={!codigoSel || loading}
           style={{
             background: !codigoSel || loading ? '#e0e0e0' : '#d10a11',
             color: !codigoSel || loading ? '#999' : '#fff',
-            border: 'none', borderRadius: '8px', padding: '10px 28px',
+            border: 'none', borderRadius: '8px', padding: '0 28px',
             fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
             fontWeight: '700', cursor: !codigoSel || loading ? 'not-allowed' : 'pointer',
             fontSize: '14px', transition: 'all 0.22s ease',
-            boxShadow: !codigoSel || loading ? 'none' : '0 2px 8px rgba(209,10,17,0.28)'
+            boxShadow: !codigoSel || loading ? 'none' : '0 2px 8px rgba(209,10,17,0.28)',
+            height: '40px', boxSizing: 'border-box'
           }}
         >
           {loading ? '⏳ Buscando...' : '🔍 Ver Kardex'}
         </button>
       </div>
+
+      {errorFecha && (
+        <p style={{
+          color: '#d10a11', background: 'rgba(209,10,17,0.1)',
+          padding: '8px 14px', borderRadius: '6px',
+          fontSize: '13px', marginBottom: '12px', marginTop: '4px'
+        }}>
+          ⚠ {errorFecha}
+        </p>
+      )}
 
       {error && <AlertMessage texto={error} tipo="error" onClose={() => setError('')} />}
       {loading && (
@@ -183,6 +261,29 @@ export default function KardexPage() {
               <span style={{ fontSize: '11px', fontWeight: '700', color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>Stock Actual</span>
               <span style={{ color: '#d10a11', fontWeight: '800', fontSize: '20px' }}>{kardex.stock_final}</span>
             </div>
+
+            {/* Badge de rango de fechas aplicado */}
+            {(kardex.filtros?.fechaInicio || kardex.filtros?.fechaFin) && (
+              <div style={{
+                width: '100%', marginTop: '8px',
+                padding: '8px 14px', background: 'rgba(209,10,17,0.06)',
+                borderRadius: '8px', fontSize: '13px', color: '#d10a11',
+                fontWeight: '600'
+              }}>
+                📅 Período filtrado:{' '}
+                <strong>
+                  {kardex.filtros.fechaInicio
+                    ? new Date(kardex.filtros.fechaInicio + 'T00:00:00').toLocaleDateString('es-EC')
+                    : 'desde el inicio'}
+                </strong>
+                {' → '}
+                <strong>
+                  {kardex.filtros.fechaFin
+                    ? new Date(kardex.filtros.fechaFin + 'T00:00:00').toLocaleDateString('es-EC')
+                    : 'hasta hoy'}
+                </strong>
+              </div>
+            )}
           </div>
 
           {/* Tabla de movimientos */}
@@ -207,7 +308,7 @@ export default function KardexPage() {
                 {(!kardex.movimientos || kardex.movimientos.length === 0) ? (
                   <tr>
                     <td colSpan={8} style={{ textAlign: 'center', padding: '36px', color: '#999', fontStyle: 'italic' }}>
-                      Este producto no tiene movimientos registrados
+                      No hay movimientos en el período seleccionado
                     </td>
                   </tr>
                 ) : (
