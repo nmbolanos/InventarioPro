@@ -150,4 +150,79 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Ruta para solicitar el código de recuperación
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ success: false, message: 'El correo es requerido.' });
+  }
+
+  const forgotPasswordMutation = `
+    mutation ForgotPassword($email: String!) {
+      forgotPassword(email: $email) {
+        success
+        message
+      }
+    }
+  `;
+
+  try {
+    const response = await axios.post(GRAPHQL_URL, {
+      query: forgotPasswordMutation,
+      variables: { email }
+    }, { timeout: 10000 });
+
+    const result = response.data;
+    if (result.errors) {
+      return res.status(400).json({ success: false, message: result.errors[0].message });
+    }
+
+    const { success, message } = result.data.forgotPassword;
+    return res.status(success ? 200 : 400).json({ success, message });
+  } catch (error) {
+    console.error('Error en forgot-password:', error.message);
+    return res.status(500).json({ success: false, message: 'Error de conexión con el servidor de Seguridad.' });
+  }
+});
+
+// Ruta para restablecer la contraseña
+router.post('/reset-password', async (req, res) => {
+  const { email, code, newPassword } = req.body;
+  if (!email || !code || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Todos los campos son requeridos.' });
+  }
+
+  const resetPasswordMutation = `
+    mutation ResetPassword($email: String!, $codigo: String!, $password: String!, $confirmPassword: String!) {
+      resetPassword(email: $email, codigo: $codigo, password: $password, confirmPassword: $confirmPassword) {
+        success
+        message
+      }
+    }
+  `;
+
+  try {
+    const response = await axios.post(GRAPHQL_URL, {
+      query: resetPasswordMutation,
+      variables: { 
+        email, 
+        codigo: code, 
+        password: newPassword, 
+        confirmPassword: newPassword 
+      }
+    }, { timeout: 10000 });
+
+    const result = response.data;
+    if (result.errors) {
+      return res.status(400).json({ success: false, message: result.errors[0].message });
+    }
+
+    const { success, message } = result.data.resetPassword;
+    return res.status(success ? 200 : 400).json({ success, message });
+  } catch (error) {
+    console.error('Error en reset-password:', error.message);
+    return res.status(500).json({ success: false, message: 'Error de conexión con el servidor de Seguridad.' });
+  }
+});
+
 module.exports = router;
