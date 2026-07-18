@@ -5,7 +5,7 @@ const options = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: 'API InventarioPro - Módulo Inventario',
+            title: 'API Módulo Inventario UTN - Módulo Inventario',
             version: '1.0.0',
             description: 'Documentación de la API para la administración de productos (HU1) y salida para otros módulos.',
         },

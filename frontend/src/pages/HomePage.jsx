@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Home, AlertTriangle, Package, Hash, DollarSign, Activity, TrendingUp } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -8,6 +9,7 @@ import {
   getMovimientosTemporales, 
   getProductosMasVendidos 
 } from '../services/dashboardService';
+import './HomePage.css';
 
 const COLOR_PRIMARIO = '#d10a11'; // Rojo UTN oficial
 
@@ -81,59 +83,79 @@ export default function HomePage() {
   const { metricas, topProductos, distribucionEstado, alertasReposicion } = data;
 
   return (
-    <div className="container-fluid py-4 px-4" style={{ backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+    <div className="dashboard-wrapper container-fluid py-4 px-4 animated-entry">
 
       {/* Título */}
-      <div style={{ marginBottom: '28px', paddingBottom: '18px', borderBottom: '2px solid #e0e0e0', position: 'relative' }}>
-        <div style={{ position: 'absolute', bottom: '-2px', left: 0, width: '60px', height: '2px', backgroundColor: '#d10a11', borderRadius: '2px' }} />
-        <h2 style={{ margin: 0, color: '#1a1a1a', fontWeight: '800', fontSize: '22px', fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-          🏠 Dashboard de Inventario
+      <div className="dashboard-header animated-entry delay-1">
+        <div className="dashboard-header-line" />
+        <h2 style={{ margin: 0, color: '#1a1a1a', fontWeight: '800', fontSize: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Home size={28} color="#d10a11" /> Dashboard de Inventario
         </h2>
-        <p style={{ margin: '4px 0 0 0', color: '#666', fontSize: '13px' }}>Vista general del sistema de inventario</p>
+        <p style={{ margin: '6px 0 0 0', color: '#64748b', fontSize: '14px', letterSpacing: '0.2px' }}>Vista general del sistema de inventario y analíticas</p>
       </div>
 
       {/* ===== Tarjetas de métricas ===== */}
-      <div className="row g-3 mb-4">
+      <div className="row g-4 mb-4 animated-entry delay-2">
 
         <div className="col-12 col-md-6 col-lg-3">
-          <div className="card shadow-sm border-0 h-100" style={{ borderTop: `4px solid ${COLOR_PRIMARIO}` }}>
-            <div className="card-body">
-              <div className="text-muted small">Total Productos</div>
-              <div className="fs-3 fw-bold" style={{ color: COLOR_PRIMARIO }}>
-                {metricas.totalProductos}
+          <div className="card dashboard-card h-100" style={{ borderTop: `4px solid ${COLOR_PRIMARIO}` }}>
+            <div className="card-body d-flex align-items-center">
+              <div className="dashboard-icon-bg me-3" style={{ background: 'rgba(209,10,17,0.1)' }}>
+                <Package size={24} color={COLOR_PRIMARIO} />
+              </div>
+              <div>
+                <div className="text-muted small fw-semibold text-uppercase" style={{ letterSpacing: '0.5px' }}>Total Productos</div>
+                <div className="fs-3 fw-bold" style={{ color: COLOR_PRIMARIO, lineHeight: '1.2' }}>
+                  {metricas.totalProductos}
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <div className="col-12 col-md-6 col-lg-3">
-          <div className="card shadow-sm border-0 h-100" style={{ borderTop: '4px solid #28a745' }}>
-            <div className="card-body">
-              <div className="text-muted small">Unidades en Stock</div>
-              <div className="fs-3 fw-bold text-success">
-                {metricas.totalUnidades}
+          <div className="card dashboard-card h-100" style={{ borderTop: '4px solid #28a745' }}>
+            <div className="card-body d-flex align-items-center">
+              <div className="dashboard-icon-bg me-3" style={{ background: 'rgba(40,167,69,0.1)' }}>
+                <Hash size={24} color="#28a745" />
+              </div>
+              <div>
+                <div className="text-muted small fw-semibold text-uppercase" style={{ letterSpacing: '0.5px' }}>Unidades Stock</div>
+                <div className="fs-3 fw-bold text-success" style={{ lineHeight: '1.2' }}>
+                  {metricas.totalUnidades}
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <div className="col-12 col-md-6 col-lg-3">
-          <div className="card shadow-sm border-0 h-100" style={{ borderTop: '4px solid #fd7e14' }}>
-            <div className="card-body">
-              <div className="text-muted small">Valor Inventario</div>
-              <div className="fs-3 fw-bold text-warning">
-                ${metricas.valorInventario.toFixed(2)}
+          <div className="card dashboard-card h-100" style={{ borderTop: '4px solid #333333' }}>
+            <div className="card-body d-flex align-items-center">
+              <div className="dashboard-icon-bg me-3" style={{ background: 'rgba(51,51,51,0.1)' }}>
+                <DollarSign size={24} color="#333333" />
+              </div>
+              <div>
+                <div className="text-muted small fw-semibold text-uppercase" style={{ letterSpacing: '0.5px' }}>Valor Inventario</div>
+                <div className="fs-3 fw-bold text-dark" style={{ lineHeight: '1.2' }}>
+                  ${metricas.valorInventario.toFixed(2)}
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <div className="col-12 col-md-6 col-lg-3">
-          <div className="card shadow-sm border-0 h-100" style={{ borderTop: '4px solid #dc3545' }}>
-            <div className="card-body">
-              <div className="text-muted small">Productos sin Stock</div>
-              <div className="fs-3 fw-bold text-danger">
-                {metricas.sinStock}
+          <div className="card dashboard-card h-100" style={{ borderTop: '4px solid #dc3545' }}>
+            <div className="card-body d-flex align-items-center">
+              <div className="dashboard-icon-bg me-3" style={{ background: 'rgba(220,53,69,0.1)' }}>
+                <AlertTriangle size={24} color="#dc3545" />
+              </div>
+              <div>
+                <div className="text-muted small fw-semibold text-uppercase" style={{ letterSpacing: '0.5px' }}>Sin Stock</div>
+                <div className="fs-3 fw-bold text-danger" style={{ lineHeight: '1.2' }}>
+                  {metricas.sinStock}
+                </div>
               </div>
             </div>
           </div>
@@ -146,9 +168,9 @@ export default function HomePage() {
 
         {/* Top productos por stock */}
         <div className="col-12 col-lg-7">
-          <div className="card shadow-sm border-0 h-100">
-            <div className="card-body">
-              <h6 className="fw-bold mb-3" style={{ color: COLOR_PRIMARIO }}>
+          <div className="card dashboard-card h-100 animated-entry delay-3">
+            <div className="card-body chart-container-wrapper">
+              <h6 className="card-title-custom mb-4">
                 Top 5 Productos con Mayor Stock
               </h6>
               <ResponsiveContainer width="100%" height={280}>
@@ -166,9 +188,9 @@ export default function HomePage() {
 
         {/* Distribución por estado (semáforo) */}
         <div className="col-12 col-lg-5">
-          <div className="card shadow-sm border-0 h-100">
-            <div className="card-body">
-              <h6 className="fw-bold mb-3" style={{ color: COLOR_PRIMARIO }}>
+          <div className="card dashboard-card h-100 animated-entry delay-3">
+            <div className="card-body chart-container-wrapper">
+              <h6 className="card-title-custom mb-4">
                 Distribución de Stock
               </h6>
               <ResponsiveContainer width="100%" height={280}>
@@ -196,27 +218,27 @@ export default function HomePage() {
       </div>
 
       {/* ===== NUEVO: Gráfico Temporal Compras vs Ventas ===== */}
-<div className="row g-3 mb-4">
+<div className="row g-4 mb-4">
   <div className="col-12 col-lg-7">
-    <div className="card shadow-sm border-0 h-100">
-      <div className="card-body">
-        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-          <h6 className="fw-bold mb-0" style={{ color: COLOR_PRIMARIO }}>
+    <div className="card dashboard-card h-100 animated-entry delay-3">
+      <div className="card-body chart-container-wrapper">
+        <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+          <h6 className="card-title-custom mb-0">
             Compras vs Ventas
           </h6>
 
           {/* Selector mes/semana */}
-          <div className="btn-group btn-group-sm" role="group">
+          <div className="btn-group" role="group">
             <button
               type="button"
-              className={`btn ${agrupacion === 'semana' ? 'btn-primary' : 'btn-outline-primary'}`}
+              className={`btn-modern ${agrupacion === 'semana' ? 'btn-modern-outline active' : 'btn-modern-outline'}`}
               onClick={() => setAgrupacion('semana')}
             >
               Semana
             </button>
             <button
               type="button"
-              className={`btn ${agrupacion === 'mes' ? 'btn-primary' : 'btn-outline-primary'}`}
+              className={`btn-modern ${agrupacion === 'mes' ? 'btn-modern-outline active' : 'btn-modern-outline'}`}
               onClick={() => setAgrupacion('mes')}
             >
               Mes
@@ -229,7 +251,7 @@ export default function HomePage() {
             <div className="spinner-border spinner-border-sm" style={{ color: COLOR_PRIMARIO }} />
           </div>
         ) : movimientosTemp.length === 0 ? (
-          <div className="alert alert-info mb-0">No hay movimientos registrados aún.</div>
+          <div className="alert alert-secondary mb-0">No hay movimientos registrados aún.</div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
   <BarChart data={movimientosTemp} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -253,13 +275,13 @@ export default function HomePage() {
 
   {/* Productos más vendidos - Gráfico de área */}
   <div className="col-12 col-lg-5">
-    <div className="card shadow-sm border-0 h-100">
+    <div className="card dashboard-card h-100">
       <div className="card-body">
         <h6 className="fw-bold mb-3" style={{ color: COLOR_PRIMARIO }}>
           Productos Más Vendidos
         </h6>
         {masVendidos.length === 0 ? (
-          <div className="alert alert-info mb-0">No hay ventas registradas aún.</div>
+          <div className="alert alert-secondary mb-0">No hay ventas registradas aún.</div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
   <BarChart data={masVendidos} margin={{ top: 5, right: 10, left: 0, bottom: 60 }}>
@@ -279,7 +301,7 @@ export default function HomePage() {
       {masVendidos.map((entry, index) => (
         <Cell
           key={`cell-${index}`}
-          fill={index % 2 === 0 ? COLOR_PRIMARIO : '#0077cc'}
+          fill={index % 2 === 0 ? COLOR_PRIMARIO : '#666666'}
         />
       ))}
     </Bar>
@@ -296,8 +318,8 @@ export default function HomePage() {
         <div className="col-12">
           <div className="card shadow-sm border-0">
             <div className="card-body">
-              <h6 className="fw-bold mb-3" style={{ color: COLOR_PRIMARIO }}>
-                🚦 Alertas de Reposición
+              <h6 className="fw-bold mb-3" style={{ color: COLOR_PRIMARIO, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertTriangle size={20} color="#d10a11" /> Alertas de Reposición
               </h6>
 
               {alertasReposicion.length === 0 ? (

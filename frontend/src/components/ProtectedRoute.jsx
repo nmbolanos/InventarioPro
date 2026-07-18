@@ -1,4 +1,5 @@
 import React from 'react';
+import { Lock } from 'lucide-react';
 import { Navigate, Outlet, useNavigate } from 'react-router-dom';
 
 const ProtectedRoute = ({ allowedRoles = [], allowedPermissions = [] }) => {
@@ -58,7 +59,9 @@ const AccessDeniedView = () => {
         fontFamily: 'var(--font-family, "Inter", sans-serif)'
       }}
     >
-      <div style={{ fontSize: '72px', marginBottom: '24px', animation: 'floatDenied 3s ease-in-out infinite' }}>🔒</div>
+      <div style={{ marginBottom: '24px', animation: 'floatDenied 3s ease-in-out infinite', color: '#d10a11' }}>
+        <Lock size={72} />
+      </div>
       <h2 style={{ color: 'var(--error-color, #E76F00)', margin: '0 0 12px 0', fontSize: '30px', fontWeight: '700' }}>
         Acceso Denegado
       </h2>

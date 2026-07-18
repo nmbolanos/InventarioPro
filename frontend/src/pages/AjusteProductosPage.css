@@ -1,4 +1,4 @@
-﻿.ajuste-page-container {
+.ajuste-page-container {
     padding: 30px 32px;
     max-width: 1200px;
     margin: 0 auto;
@@ -114,7 +114,7 @@
 .tab-button {
     background:none; border:none; border-bottom:3px solid transparent;
     margin-bottom:-2px;
-    padding:10px 22px; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    padding:10px 22px; font-family:var(--font-family);
     font-size:14px; font-weight:700; color:#666; cursor:pointer; transition:all 0.2s;
     border-radius: 6px 6px 0 0;
 }
@@ -130,7 +130,7 @@
 .pagination-button {
     background:#fff; border:1px solid #e0e0e0; padding:6px 12px;
     font-size:13px; border-radius:6px; cursor:pointer; transition:all 0.2s;
-    font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+    font-family:var(--font-family);
 }
 .pagination-button:hover:not(:disabled) { background:#d10a11; color:#fff; border-color:#d10a11; transform:translateY(-1px); }
 .pagination-button:disabled { cursor:not-allowed; opacity:0.4; }

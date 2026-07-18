@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Package, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import LogoUTN from '../Logo_UTN.png';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './LoginPage.css';
@@ -53,7 +55,7 @@ const LoginPage = () => {
           // Limpiamos los roles eliminando posibles espacios en blanco (ej: "INV_BODEGUERO ")
           const roles = (decoded.roles || []).map((r) => r.trim());
           const permissions = decoded.permissions || [];
-          
+
           // Guardamos el token y los datos del usuario en localStorage
           localStorage.setItem('token', token);
           localStorage.setItem(
@@ -77,7 +79,7 @@ const LoginPage = () => {
       console.error(err);
       setError(
         err.response?.data?.message ||
-          'Credenciales incorrectas o error al conectar con el servidor.'
+        'Credenciales incorrectas o error al conectar con el servidor.'
       );
     } finally {
       setLoading(false);
@@ -88,14 +90,19 @@ const LoginPage = () => {
     <div className="login-wrapper">
       <div className="login-card card">
         <div className="login-header">
-          <div className="brand-logo">📦</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+            <img src={LogoUTN} alt="UTN Logo" style={{ width: '140px', height: 'auto', objectFit: 'contain' }} />
+          </div>
+          <div className="brand-logo" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(209,10,17,0.1)', padding: '12px', borderRadius: '50%', marginBottom: '16px' }}>
+            <Package size={32} color="#d10a11" />
+          </div>
           <h2>Módulo Inventario</h2>
-          <p>Gestión de Productos y Stock</p>
+          <p>Gestión de Productos</p>
         </div>
 
         {error && (
           <div className="login-error-alert">
-            <span className="error-icon">⚠️</span>
+            <AlertTriangle size={18} className="error-icon" style={{ color: '#d10a11' }} />
             <span className="error-text">{error}</span>
           </div>
         )}
@@ -133,7 +140,7 @@ const LoginPage = () => {
                 title={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
                 disabled={loading}
               >
-                {showPassword ? '👁️' : '👁️‍🗨️'}
+                {showPassword ? <EyeOff size={18} color="#666" /> : <Eye size={18} color="#666" />}
               </button>
             </div>
           </div>

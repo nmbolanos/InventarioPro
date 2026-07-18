@@ -3,66 +3,134 @@ const AjusteDetalle = require('../models/ajusteDetalle');
 const PDFDocument = require('pdfkit');
 
 const buildPdfBuffer = (cabecera, detalles) => new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 40, size: 'A4' });
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
     const chunks = [];
 
     doc.on('data', (chunk) => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    doc.fontSize(18).text('Documento de Ajuste de Productos', { align: 'center' });
-    doc.moveDown(0.5);
-    doc.fontSize(10).text(`Número de ajuste: ${cabecera.numero_ajuste}`);
-    doc.text(`Fecha: ${new Date(cabecera.fecha).toLocaleString('es-EC')}`);
-    doc.text(`Estado: ${cabecera.impreso ? 'Impreso y bloqueado' : 'Pendiente de impresión'}`);
-    doc.moveDown(0.5);
-    doc.fontSize(12).text(`Descripción: ${cabecera.descripcion || ''}`);
-    doc.moveDown();
+    // Branding Colors
+    const primaryColor = '#d10a11';
+    const textColor = '#333333';
+    const lightGray = '#f9f9f9';
+    const borderColor = '#eeeeee';
 
-    doc.fontSize(12).text('Detalle', { underline: true });
-    doc.moveDown(0.5);
+    // Top Red Bar
+    doc.rect(0, 0, doc.page.width, 8).fill(primaryColor);
 
-    const startX = 40;
-    const widths = [90, 220, 70, 70, 70];
-    const headers = ['Código', 'Producto', 'Stock', 'Cantidad', 'Subtotal'];
+    // Title
+    doc.moveDown(1);
+    doc.fontSize(20).fillColor(primaryColor).font('Helvetica-Bold').text('REPORTE DE AJUSTE', { align: 'center', characterSpacing: 1 });
+    doc.moveDown(1.5);
+
+    // Meta Data Box
+    const startX = 50;
+    const boxWidth = doc.page.width - 100;
+    
+    doc.rect(startX, doc.y, boxWidth, 55).fillAndStroke('#fafafa', '#e0e0e0');
+    
+    let metaY = doc.y + 12;
+    doc.fontSize(10).fillColor(textColor).font('Helvetica-Bold').text('NÚMERO:', startX + 15, metaY);
+    doc.font('Helvetica').text(cabecera.numero_ajuste, startX + 75, metaY);
+    
+    doc.font('Helvetica-Bold').text('FECHA:', startX + 270, metaY);
+    doc.font('Helvetica').text(new Date(cabecera.fecha).toLocaleDateString('es-EC'), startX + 320, metaY);
+    
+    metaY += 20;
+    doc.font('Helvetica-Bold').text('MOTIVO:', startX + 15, metaY);
+    doc.font('Helvetica').text(cabecera.descripcion || 'Sin descripción', startX + 75, metaY, { width: boxWidth - 90 });
+
+    doc.y = metaY + 35;
+    
+    // Table Configuration
+    const widths = [80, 205, 60, 65, 85];
+    const headers = ['CÓDIGO', 'PRODUCTO', 'STOCK', 'CANTIDAD', 'SUBTOTAL'];
     let y = doc.y;
 
-    const drawCell = (text, x, yPos, width, height, align = 'left') => {
-        doc.rect(x, yPos, width, height).stroke();
-        doc.fontSize(9).text(text ?? '', x + 4, yPos + 5, {
-            width: width - 8,
-            align,
-            height: height - 10
-        });
-    };
-
+    // Draw Table Header
+    doc.rect(startX, y, boxWidth, 25).fill(primaryColor);
+    
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(9);
     headers.forEach((header, index) => {
-        drawCell(header, startX + widths.slice(0, index).reduce((a, b) => a + b, 0), y, widths[index], 24, 'center');
+        let x = startX + widths.slice(0, index).reduce((a, b) => a + b, 0);
+        doc.text(header, x, y + 8, {
+            width: widths[index],
+            align: index === 1 ? 'left' : 'center',
+            indent: index === 1 ? 10 : 0
+        });
     });
 
-    y += 24;
+    y += 25;
+    doc.font('Helvetica').fontSize(9);
 
-    detalles.forEach((detalle) => {
+    let totalSubtotal = 0;
+
+    detalles.forEach((detalle, index) => {
+        // Page break logic
+        if (y > 720) {
+            doc.addPage();
+            doc.rect(0, 0, doc.page.width, 8).fill(primaryColor);
+            y = 50;
+            // Redraw Header
+            doc.rect(startX, y, boxWidth, 25).fill(primaryColor);
+            doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(9);
+            headers.forEach((h, i) => {
+                let x = startX + widths.slice(0, i).reduce((a, b) => a + b, 0);
+                doc.text(h, x, y + 8, { width: widths[i], align: i === 1 ? 'left' : 'center', indent: i === 1 ? 10 : 0 });
+            });
+            y += 25;
+            doc.font('Helvetica').fontSize(9);
+        }
+
+        // Alternating row background
+        if (index % 2 === 0) {
+            doc.rect(startX, y, boxWidth, 25).fill(lightGray);
+        } else {
+            doc.rect(startX, y, boxWidth, 25).fill('#ffffff');
+        }
+
         const cantidad = Number(detalle.cantidad || 0);
         const pvp = Number(detalle.pvp || 0);
         const subtotal = Number.isFinite(Number(detalle.subtotal)) ? Number(detalle.subtotal) : Number((pvp * cantidad).toFixed(2));
-        const row = [
-            detalle.codigo_producto,
-            detalle.producto_nombre || detalle.codigo_producto,
-            String(detalle.stock_actual ?? ''),
-            String(cantidad),
-            `$${subtotal.toFixed(2)}`
+        totalSubtotal += subtotal;
+        
+        let cantidadStr = cantidad > 0 ? `+${cantidad}` : `${cantidad}`;
+        let cantidadColor = cantidad > 0 ? '#1a7a1a' : '#d10a11'; // Green for positive, Red for negative
+
+        const rowData = [
+            { text: detalle.codigo_producto, align: 'center', color: textColor },
+            { text: detalle.producto_nombre || detalle.codigo_producto, align: 'left', color: textColor, padLeft: 10 },
+            { text: String(detalle.stock_actual ?? ''), align: 'center', color: textColor },
+            { text: cantidadStr, align: 'center', color: cantidadColor, font: 'Helvetica-Bold' },
+            { text: `$${Math.abs(subtotal).toFixed(2)}`, align: 'right', color: textColor, padRight: 10 }
         ];
-        const rowHeight = 24;
-        row.forEach((value, index) => {
-            drawCell(value, startX + widths.slice(0, index).reduce((a, b) => a + b, 0), y, widths[index], rowHeight, index === 3 || index === 4 ? 'right' : 'left');
+
+        rowData.forEach((col, i) => {
+            let x = startX + widths.slice(0, i).reduce((a, b) => a + b, 0);
+            if (col.font) doc.font(col.font); else doc.font('Helvetica');
+            doc.fillColor(col.color);
+            doc.text(col.text, x + (col.padLeft || 0), y + 8, {
+                width: widths[i] - (col.padRight || 0) - (col.padLeft || 0),
+                align: col.align
+            });
         });
-        y += rowHeight;
-        if (y > 740) {
-            doc.addPage();
-            y = 40;
-        }
+        
+        // Bottom border for the row
+        doc.moveTo(startX, y + 25).lineTo(startX + boxWidth, y + 25).strokeColor(borderColor).lineWidth(1).stroke();
+        
+        y += 25;
     });
+
+    // Subtotal Row
+    y += 10;
+    doc.font('Helvetica-Bold').fontSize(11).fillColor(textColor);
+    doc.text('Total Ajustado:', startX + widths[0] + widths[1] + widths[2], y, { width: widths[3], align: 'right' });
+    doc.fillColor(primaryColor).text(`$${Math.abs(totalSubtotal).toFixed(2)}`, startX + widths[0] + widths[1] + widths[2] + widths[3], y, { width: widths[4], align: 'right' });
+
+    // Footer
+    doc.moveDown(3);
+    doc.font('Helvetica-Oblique').fillColor('#999999').fontSize(8).text('Módulo Inventario UTN - Documento generado automáticamente', { align: 'center' });
 
     doc.end();
 });

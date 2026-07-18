@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Edit, Inbox } from 'lucide-react';
 
 const ProductoList = ({ productos, proveedoresCatalogo = [], onEdit, onDesactivar, sortBy, sortOrder, onSort }) => {
     const [expandedRow, setExpandedRow] = useState(null);
@@ -24,6 +25,7 @@ const ProductoList = ({ productos, proveedoresCatalogo = [], onEdit, onDesactiva
     if (!productos || productos.length === 0) {
         return (
             <div className="empty-state">
+                <Inbox size={48} style={{ color: '#ccc', marginBottom: '16px' }} />
                 <p>No hay productos registrados.</p>
             </div>
         );
@@ -61,9 +63,9 @@ const ProductoList = ({ productos, proveedoresCatalogo = [], onEdit, onDesactiva
                                         className="btn btn-icon btn-edit" 
                                         onClick={() => onEdit(producto)} 
                                         title="Editar"
-                                        style={{ padding: '4px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}
+                                        style={{ padding: '4px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', color: '#1a1a1a', background: 'transparent', border: 'none' }}
                                     >
-                                        ✎
+                                        <Edit size={14} />
                                     </button>
                                 </td>
                                 <td>

@@ -1,4 +1,4 @@
-﻿.login-wrapper {
+.login-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -49,7 +49,7 @@
 .login-header h2 {
   margin: 0;
   color: #d10a11;
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--font-family);
   font-weight: 800;
   font-size: 26px;
   letter-spacing: -0.5px;
@@ -108,7 +108,7 @@
   padding: 12px 14px;
   border: 1.5px solid #e0e0e0;
   border-radius: 8px;
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--font-family);
   font-size: 14px;
   color: #1a1a1a;
   background-color: #fafafa;
@@ -159,4 +159,8 @@
   font-weight: 700;
   width: 100%;
   letter-spacing: 0.02em;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }

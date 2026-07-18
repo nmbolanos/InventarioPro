@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 
 /**
  * AlertMessage - Componente reutilizable de alertas para todo el sistema.
@@ -38,7 +39,7 @@ const AlertMessage = ({ texto, tipo = 'error', onClose }) => {
                 setVisible(false);
                 if (onClose) onClose();
             }} title="Cerrar alerta">
-                ✕
+                <X size={16} />
             </button>
         </div>
     );

@@ -39,6 +39,11 @@ export const eliminarAjusteDetalle = async (idDetalle) => {
     return response.data;
 };
 
+export const actualizarAjusteDetalle = async (idDetalle, detalle) => {
+    const response = await axios.put(`${API_BASE_URL}/ajustes/detalle/${idDetalle}`, detalle);
+    return response.data;
+};
+
 export const imprimirAjuste = async (numeroAjuste) => {
     const response = await axios.post(`${API_BASE_URL}/ajustes/cabecera/${numeroAjuste}/imprimir`, {}, {
         responseType: 'blob'

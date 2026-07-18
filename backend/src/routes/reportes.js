@@ -4,19 +4,18 @@ const { getProductos, getKardex, registrarMovimientos } = require('../controller
 const { getReporteStock }         = require('../controllers/reporteStockController');
 const auth = require('../middleware/auth');
 const apiKeyAuth = require('../middleware/apiKeyAuth');
-const { checkRole } = require('../middleware/roles');
+const { checkRole, checkPermission } = require('../middleware/roles');
 
 // Endpoint para módulos externos (Compras y Facturación)
 // Requiere la llave API definida en EXTERNAL_API_KEY
 router.post('/kardex/movimientos', apiKeyAuth, registrarMovimientos);
 
-// A partir de aquí: JWT + rol INV_SUPERVISOR obligatorio
+// A partir de aquí: JWT obligatorio
 router.use(auth);
-router.use(checkRole(['INV_SUPERVISOR']));
 
-// HU5 — Kardex (solo Supervisor)
-router.get('/kardex/productos',       getProductos);
-router.get('/kardex/:codigoProducto', getKardex);
+// HU5 — Kardex (requiere permiso INV_KARDEX)
+router.get('/kardex/productos',       checkPermission(['INV_KARDEX']), getProductos);
+router.get('/kardex/:codigoProducto', checkPermission(['INV_KARDEX']), getKardex);
 
 /**
  * @swagger
@@ -77,6 +76,6 @@ router.get('/kardex/:codigoProducto', getKardex);
 router.post('/kardex/movimientos',    registrarMovimientos);
 
 // HU6 — Reporte Stock
-router.get('/stock', getReporteStock);
+router.get('/stock', checkPermission(['INV_REPORTES']), getReporteStock);
 
 module.exports = router;

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { BarChart2, Search, Calendar, Loader2, X, AlertTriangle } from 'lucide-react';
 import { getProductos, getKardex } from '../services/reportesService';
 import AlertMessage from '../components/AlertMessage';
 
@@ -21,6 +22,10 @@ export default function KardexPage() {
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin,    setFechaFin]    = useState('');
   const [errorFecha,  setErrorFecha]  = useState('');
+
+  // Paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [itemsPorPagina, setItemsPorPagina] = useState(10);
 
   useEffect(() => {
     getProductos()
@@ -59,6 +64,7 @@ export default function KardexPage() {
     setLoading(true);
     setError('');
     setKardex(null);
+    setPaginaActual(1); // Resetear paginación al buscar
     try {
       const data = await getKardex(codigoSel, fechaInicio, fechaFin);
       setKardex(data);
@@ -77,25 +83,25 @@ export default function KardexPage() {
       {/* Título */}
       <div style={{ marginBottom: '28px', paddingBottom: '18px', borderBottom: '2px solid #e0e0e0', position: 'relative' }}>
         <div style={{ position: 'absolute', bottom: '-2px', left: 0, width: '60px', height: '2px', backgroundColor: '#d10a11', borderRadius: '2px' }} />
-        <h2 style={{ margin: 0, color: '#1a1a1a', fontWeight: '800', fontSize: '22px', fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-          📊 Reporte de Kardex
+        <h2 style={{ margin: 0, color: '#1a1a1a', fontWeight: '800', fontSize: '22px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <BarChart2 size={26} color="#d10a11" /> Reporte de Kardex
         </h2>
       </div>
 
       {/* Buscador con autocompletado y Filtros */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', minWidth: '340px', flex: 1 }}>
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', alignItems: 'flex-end', flexWrap: 'wrap', padding: '20px', background: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+        <div style={{ position: 'relative', minWidth: '340px', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <label style={{ fontSize: '12px', fontWeight: '600', color: '#666', marginLeft: '4px' }}>Producto</label>
           <input
             type="text"
             value={busqueda}
-            placeholder="🔍 Buscar producto por nombre o código..."
+            placeholder="Buscar producto por nombre o código..."
             onChange={e => { setBusqueda(e.target.value); setCodigoSel(''); setMostrarLista(true); }}
             onFocus={() => setMostrarLista(true)}
             onBlur={() => setTimeout(() => setMostrarLista(false), 150)}
             style={{
               padding: '10px 14px', borderRadius: '8px',
               border: '1.5px solid #e0e0e0', width: '100%',
-              fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
               fontSize: '14px', boxSizing: 'border-box',
               color: '#1a1a1a', background: '#fafafa',
               transition: 'all 0.22s ease'
@@ -150,6 +156,7 @@ export default function KardexPage() {
 
         {/* Fecha Inicio */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <label style={{ fontSize: '12px', fontWeight: '600', color: '#666', marginLeft: '4px' }}>Desde</label>
           <input
             type="date"
             value={fechaInicio}
@@ -157,7 +164,6 @@ export default function KardexPage() {
             style={{
               padding: '9px 12px', borderRadius: '8px',
               border: `1.5px solid ${errorFecha ? '#d10a11' : '#e0e0e0'}`,
-              fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
               fontSize: '14px', color: '#333', cursor: 'pointer',
               background: '#fafafa', height: '40px', boxSizing: 'border-box'
             }}
@@ -166,6 +172,7 @@ export default function KardexPage() {
 
         {/* Fecha Fin */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <label style={{ fontSize: '12px', fontWeight: '600', color: '#666', marginLeft: '4px' }}>Hasta</label>
           <input
             type="date"
             value={fechaFin}
@@ -173,44 +180,47 @@ export default function KardexPage() {
             style={{
               padding: '9px 12px', borderRadius: '8px',
               border: `1.5px solid ${errorFecha ? '#d10a11' : '#e0e0e0'}`,
-              fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
               fontSize: '14px', color: '#333', cursor: 'pointer',
               background: '#fafafa', height: '40px', boxSizing: 'border-box'
             }}
           />
         </div>
 
-        {/* Botón limpiar fechas */}
-        {(fechaInicio || fechaFin) && (
-          <button
-            onClick={limpiarFechas}
-            style={{
-              background: 'transparent', color: '#888',
-              border: '1.5px solid #ddd', borderRadius: '8px',
-              padding: '0 14px', cursor: 'pointer',
-              fontSize: '13px', height: '40px', boxSizing: 'border-box'
-            }}
-          >
-            ✕ Limpiar
-          </button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', paddingBottom: '2px' }}>
+          {(fechaInicio || fechaFin) && (
+            <button
+              onClick={limpiarFechas}
+              style={{
+                background: 'transparent', color: '#888',
+                border: '1.5px solid #ddd', borderRadius: '8px',
+                padding: '0 14px', cursor: 'pointer',
+                fontSize: '13px', height: '40px', boxSizing: 'border-box'
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><X size={14} /> Limpiar</span>
+            </button>
+          )}
 
-        <button
-          onClick={handleBuscar}
-          disabled={!codigoSel || loading}
-          style={{
-            background: !codigoSel || loading ? '#e0e0e0' : '#d10a11',
-            color: !codigoSel || loading ? '#999' : '#fff',
-            border: 'none', borderRadius: '8px', padding: '0 28px',
-            fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
-            fontWeight: '700', cursor: !codigoSel || loading ? 'not-allowed' : 'pointer',
-            fontSize: '14px', transition: 'all 0.22s ease',
-            boxShadow: !codigoSel || loading ? 'none' : '0 2px 8px rgba(209,10,17,0.28)',
-            height: '40px', boxSizing: 'border-box'
-          }}
+          <button
+            onClick={handleBuscar}
+            disabled={!codigoSel || loading}
+            style={{
+              background: !codigoSel || loading ? '#e0e0e0' : '#d10a11',
+              color: !codigoSel || loading ? '#999' : '#fff',
+              border: 'none', borderRadius: '8px', padding: '0 28px',
+              fontWeight: '700', cursor: !codigoSel || loading ? 'not-allowed' : 'pointer',
+              fontSize: '14px', transition: 'all 0.22s ease',
+              boxShadow: !codigoSel || loading ? 'none' : '0 2px 8px rgba(209,10,17,0.28)',
+              height: '40px', boxSizing: 'border-box'
+            }}
         >
-          {loading ? '⏳ Buscando...' : '🔍 Ver Kardex'}
+          {loading ? (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Buscando...</span>
+          ) : (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Search size={16} /> Ver Kardex</span>
+          )}
         </button>
+        </div>
       </div>
 
       {errorFecha && (
@@ -219,7 +229,7 @@ export default function KardexPage() {
           padding: '8px 14px', borderRadius: '6px',
           fontSize: '13px', marginBottom: '12px', marginTop: '4px'
         }}>
-          ⚠ {errorFecha}
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><AlertTriangle size={14} /> {errorFecha}</span>
         </p>
       )}
 
@@ -233,33 +243,48 @@ export default function KardexPage() {
 
       {kardex && !loading && (
         <div style={{ animation: 'fadeIn 0.35s ease both' }}>
+          {(() => {
+            const movimientosList = kardex.movimientos || [];
+            const totalPaginas = Math.max(1, Math.ceil(movimientosList.length / itemsPorPagina));
+            const indiceInicio = (paginaActual - 1) * itemsPorPagina;
+            const movimientosPaginados = movimientosList.slice(indiceInicio, indiceInicio + itemsPorPagina);
+
+            return (
+              <>
 
           {/* Ficha del producto */}
           <div style={{
             background: '#fff', borderRadius: '12px',
-            padding: '20px 24px', marginBottom: '20px',
-            display: 'flex', gap: '32px', flexWrap: 'wrap',
-            borderLeft: '4px solid #d10a11',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
-            border: '1px solid #e0e0e0',
-            borderLeftColor: '#d10a11'
+            padding: '20px', marginBottom: '20px',
+            display: 'flex', gap: '12px', flexWrap: 'wrap',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+            border: '1px solid #e0e0e0'
           }}>
             {[
-              { label: 'Producto', value: kardex.producto?.nombre },
+              { label: 'Producto', value: kardex.producto?.nombre, flex: '2 1 200px' },
               { label: 'Código', value: kardex.producto?.codigo },
               { label: 'Costo', value: `$${Number(kardex.producto?.costo || 0).toFixed(2)}` },
               { label: 'P.V.P', value: `$${Number(kardex.producto?.pvp || 0).toFixed(2)}` },
               { label: 'Stock Inicial', value: kardex.stock_inicial },
               { label: 'Movimientos', value: kardex.total_movimientos },
             ].map(item => (
-              <div key={item.label}>
-                <span style={{ fontSize: '11px', fontWeight: '700', color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>{item.label}</span>
+              <div key={item.label} style={{
+                background: '#fafafa', border: '1px solid #eee',
+                padding: '12px 16px', borderRadius: '8px',
+                flex: item.flex || '1 1 auto', minWidth: '110px',
+                display: 'flex', flexDirection: 'column', justifyContent: 'center'
+              }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>{item.label}</span>
                 <span style={{ fontSize: '15px', fontWeight: '600', color: '#1a1a1a' }}>{item.value}</span>
               </div>
             ))}
-            <div>
-              <span style={{ fontSize: '11px', fontWeight: '700', color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>Stock Actual</span>
-              <span style={{ color: '#d10a11', fontWeight: '800', fontSize: '20px' }}>{kardex.stock_final}</span>
+            <div style={{
+              background: 'rgba(209,10,17,0.04)', border: '1px solid rgba(209,10,17,0.2)',
+              padding: '12px 16px', borderRadius: '8px', flex: '1 1 auto', minWidth: '110px',
+              display: 'flex', flexDirection: 'column', justifyContent: 'center'
+            }}>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#d10a11', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Stock Actual</span>
+              <span style={{ color: '#d10a11', fontWeight: '800', fontSize: '20px', lineHeight: 1 }}>{kardex.stock_final}</span>
             </div>
 
             {/* Badge de rango de fechas aplicado */}
@@ -268,9 +293,9 @@ export default function KardexPage() {
                 width: '100%', marginTop: '8px',
                 padding: '8px 14px', background: 'rgba(209,10,17,0.06)',
                 borderRadius: '8px', fontSize: '13px', color: '#d10a11',
-                fontWeight: '600'
+                fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px'
               }}>
-                📅 Período filtrado:{' '}
+                <Calendar size={14} /> Período filtrado:{' '}
                 <strong>
                   {kardex.filtros.fechaInicio
                     ? new Date(kardex.filtros.fechaInicio + 'T00:00:00').toLocaleDateString('es-EC')
@@ -305,14 +330,14 @@ export default function KardexPage() {
                 </tr>
               </thead>
               <tbody>
-                {(!kardex.movimientos || kardex.movimientos.length === 0) ? (
+                {(!movimientosList || movimientosList.length === 0) ? (
                   <tr>
                     <td colSpan={8} style={{ textAlign: 'center', padding: '36px', color: '#999', fontStyle: 'italic' }}>
                       No hay movimientos en el período seleccionado
                     </td>
                   </tr>
                 ) : (
-                  kardex.movimientos.map((mov, i) => {
+                  movimientosPaginados.map((mov, i) => {
                     const color = TIPO_COLORES[mov.tipo_movimiento] || { bg: '#f5f5f5', text: '#666' };
                     return (
                       <tr key={mov.id_movimiento ?? i}
@@ -330,8 +355,8 @@ export default function KardexPage() {
                         </td>
                         <td style={{ padding: '11px 14px', color: '#1a1a1a', fontSize: '13px' }}>{mov.documento_referencia}</td>
                         <td style={{ padding: '11px 14px', color: '#666', fontSize: '13px', maxWidth: '200px' }}>{mov.descripcion}</td>
-                        <td style={{ padding: '11px 14px', fontWeight: '700', color: ['VENTA', 'EGRESO', 'DEVOLUCION_COMPRA'].includes(mov.tipo_movimiento) || Number(mov.cantidad) < 0 ? '#a80008' : '#1a7a1a', fontSize: '14px' }}>
-                          {['VENTA', 'EGRESO', 'DEVOLUCION_COMPRA'].includes(mov.tipo_movimiento) 
+                        <td style={{ padding: '11px 14px', fontWeight: '700', color: ['VENTA', 'EGRESO', 'DEVOLUCION_COMPRA', 'AJUSTE_EGRESO'].includes(mov.tipo_movimiento) || Number(mov.cantidad) < 0 ? '#a80008' : '#1a7a1a', fontSize: '14px' }}>
+                          {['VENTA', 'EGRESO', 'DEVOLUCION_COMPRA', 'AJUSTE_EGRESO'].includes(mov.tipo_movimiento) || Number(mov.cantidad) < 0 
                             ? `-${Math.abs(mov.cantidad)}` 
                             : `+${Math.abs(mov.cantidad)}`}
                         </td>
@@ -346,6 +371,73 @@ export default function KardexPage() {
             </table>
           </div>
 
+          {/* Paginación */}
+          {movimientosList.length > 0 && (
+            <div className="pagination-container" style={{ marginTop: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Mostrar</span>
+                    <select
+                        value={itemsPorPagina}
+                        onChange={(e) => { setItemsPorPagina(Number(e.target.value)); setPaginaActual(1); }}
+                        className="modern-select"
+                        style={{ padding: '4px 8px', width: 'auto' }}
+                    >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                    </select>
+                    <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>registros</span>
+                </div>
+
+                <div className="pagination-controls">
+                    <button
+                        className="pagination-button"
+                        onClick={() => setPaginaActual(1)}
+                        disabled={paginaActual === 1}
+                    >
+                        «
+                    </button>
+                    <button
+                        className="pagination-button"
+                        onClick={() => setPaginaActual(p => Math.max(p - 1, 1))}
+                        disabled={paginaActual === 1}
+                    >
+                        Anterior
+                    </button>
+                    {Array.from({ length: totalPaginas }, (_, idx) => idx + 1).map(page => (
+                        <button
+                            key={page}
+                            className={`pagination-button ${paginaActual === page ? 'active' : ''}`}
+                            onClick={() => setPaginaActual(page)}
+                        >
+                            {page}
+                        </button>
+                    ))}
+                    <button
+                        className="pagination-button"
+                        onClick={() => setPaginaActual(p => Math.min(p + 1, totalPaginas))}
+                        disabled={paginaActual === totalPaginas}
+                    >
+                        Siguiente
+                    </button>
+                    <button
+                        className="pagination-button"
+                        onClick={() => setPaginaActual(totalPaginas)}
+                        disabled={paginaActual === totalPaginas}
+                    >
+                        »
+                    </button>
+                </div>
+
+                <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                    Mostrando {indiceInicio + 1} a {Math.min(indiceInicio + itemsPorPagina, movimientosList.length)} de {movimientosList.length} movimientos
+                </span>
+            </div>
+          )}
+              </>
+            );
+          })()}
         </div>
       )}
     </div>

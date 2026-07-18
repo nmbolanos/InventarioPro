@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const ajusteDetalleController = require('../controllers/ajusteDetalle');
 const auth = require('../middleware/auth');
-const { checkRole } = require('../middleware/roles');
+const { checkPermission } = require('../middleware/roles');
 
 router.use(auth);
-router.use(checkRole(['INV_BODEGUERO ', 'INV_SUPERVISOR']));
+router.use(checkPermission(['INV_PRODUCTOS']));
 
 router.get('/', ajusteDetalleController.obtenerTodos);
 router.get('/:id', ajusteDetalleController.obtenerPorId);

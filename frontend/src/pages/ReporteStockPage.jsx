@@ -1,20 +1,20 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
+import { Package, Hash, DollarSign, AlertTriangle, TrendingDown, Lock, TrendingUp, Inbox, Check, X } from 'lucide-react';
 import { getReporteStock } from '../services/reportesService';
 import AlertMessage from '../components/AlertMessage';
 
 const CARD_CONFIG = [
-  { key: 'totalProductos', label: 'Total Productos',   color: '#d10a11', icon: '📦' },
-  { key: 'totalUnidades',  label: 'Total Unidades',    color: '#1a7a1a', icon: '🔢' },
-  { key: 'valorTotal',     label: 'Valor Inventario',  color: '#c07000', icon: '💰', prefix: '$' },
-  { key: 'sinStock',       label: 'Sin Stock',         color: '#a80008', icon: '⚠️' },
-  { key: 'stockBajo',      label: 'Stock Bajo (< 5)',  color: '#b45309', icon: '📉' },
-  { key: 'inactivos',      label: 'Inactivos',         color: '#666666', icon: '🔒' },
+  { key: 'totalProductos', label: 'Total Productos',   color: '#d10a11', icon: <Package size={28} /> },
+  { key: 'totalUnidades',  label: 'Total Unidades',    color: '#1a7a1a', icon: <Hash size={28} /> },
+  { key: 'valorTotal',     label: 'Valor Inventario',  color: '#c07000', icon: <DollarSign size={28} />, prefix: '$' },
+  { key: 'sinStock',       label: 'Sin Stock',         color: '#a80008', icon: <AlertTriangle size={28} /> },
+  { key: 'stockBajo',      label: 'Stock Bajo (< 5)',  color: '#b45309', icon: <TrendingDown size={28} /> },
+  { key: 'inactivos',      label: 'Inactivos',         color: '#666666', icon: <Lock size={28} /> },
 ];
 
 const inputStyle = {
   padding: '10px 14px', borderRadius: '8px',
   border: '1.5px solid #e0e0e0',
-  fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
   fontSize: '14px', color: '#1a1a1a', background: '#fafafa',
   transition: 'all 0.22s ease', outline: 'none'
 };
@@ -26,7 +26,8 @@ export default function ReporteStockPage() {
   const [busqueda,     setBusqueda]     = useState('');
   const [filtroEstado, setFiltroEstado] = useState('Todos');
   const [paginaActual, setPaginaActual] = useState(1);
-  const FILAS_POR_PAGINA = 10;
+  const [expandedRow,  setExpandedRow]  = useState(null);
+  const [itemsPorPagina, setItemsPorPagina] = useState(10);
 
   useEffect(() => {
     getReporteStock()
@@ -37,6 +38,7 @@ export default function ReporteStockPage() {
 
   const handleBusquedaChange = (e) => { setBusqueda(e.target.value); setPaginaActual(1); };
   const handleFiltroEstadoChange = (e) => { setFiltroEstado(e.target.value); setPaginaActual(1); };
+  const toggleRow = (codigo) => setExpandedRow(prev => prev === codigo ? null : codigo);
 
   const productosFiltrados = data?.productos?.filter(p => {
     const coincideBusqueda =
@@ -46,9 +48,9 @@ export default function ReporteStockPage() {
     return coincideBusqueda && coincideEstado;
   }) ?? [];
 
-  const totalPaginas = Math.ceil(productosFiltrados.length / FILAS_POR_PAGINA);
-  const indiceInicio = (paginaActual - 1) * FILAS_POR_PAGINA;
-  const productosPaginados = productosFiltrados.slice(indiceInicio, indiceInicio + FILAS_POR_PAGINA);
+  const totalPaginas = Math.ceil(productosFiltrados.length / itemsPorPagina);
+  const indiceInicio = (paginaActual - 1) * itemsPorPagina;
+  const productosPaginados = productosFiltrados.slice(indiceInicio, indiceInicio + itemsPorPagina);
 
   return (
     <div style={{ padding: '30px 32px', maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.35s ease both' }}>
@@ -56,8 +58,8 @@ export default function ReporteStockPage() {
       {/* Título */}
       <div style={{ marginBottom: '28px', paddingBottom: '18px', borderBottom: '2px solid #e0e0e0', position: 'relative' }}>
         <div style={{ position: 'absolute', bottom: '-2px', left: 0, width: '60px', height: '2px', backgroundColor: '#d10a11', borderRadius: '2px' }} />
-        <h2 style={{ margin: 0, color: '#1a1a1a', fontWeight: '800', fontSize: '22px', fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-          📈 Reporte de Stock
+        <h2 style={{ margin: 0, color: '#1a1a1a', fontWeight: '800', fontSize: '22px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <TrendingUp size={26} color="#d10a11" /> Reporte de Stock
         </h2>
       </div>
 
@@ -99,30 +101,60 @@ export default function ReporteStockPage() {
           </div>
 
           {/* Filtros */}
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center', padding: '14px 18px', background: '#fff', borderRadius: '10px', border: '1px solid #e0e0e0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-            <input
-              type="text"
-              placeholder="🔍 Buscar por nombre o código..."
-              value={busqueda}
-              onChange={handleBusquedaChange}
-              style={{ ...inputStyle, width: '280px' }}
-              onFocus={e => { e.target.style.borderColor = '#d10a11'; e.target.style.boxShadow = '0 0 0 3px rgba(209,10,17,0.12)'; e.target.style.background = '#fff'; }}
-              onBlur={e => { e.target.style.borderColor = '#e0e0e0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#fafafa'; }}
-            />
-            <select
-              value={filtroEstado}
-              onChange={handleFiltroEstadoChange}
-              style={{ ...inputStyle, width: '180px', cursor: 'pointer' }}
-              onFocus={e => { e.target.style.borderColor = '#d10a11'; e.target.style.boxShadow = '0 0 0 3px rgba(209,10,17,0.12)'; }}
-              onBlur={e => { e.target.style.borderColor = '#e0e0e0'; e.target.style.boxShadow = 'none'; }}
-            >
-              <option value="Todos">Todos los estados</option>
-              <option value="Activo">Activo</option>
-              <option value="Inactivo">Inactivo</option>
-            </select>
-            <span style={{ marginLeft: 'auto', color: '#666', fontSize: '13px', fontWeight: '500' }}>
-              {productosFiltrados.length} producto{productosFiltrados.length !== 1 ? 's' : ''} encontrado{productosFiltrados.length !== 1 ? 's' : ''}
-            </span>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', alignItems: 'flex-end', flexWrap: 'wrap', padding: '20px', background: '#fff', borderRadius: '12px', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+            <div style={{ position: 'relative', minWidth: '340px', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '600', color: '#666', marginLeft: '4px' }}>Buscar Producto</label>
+              <input
+                type="text"
+                placeholder="Nombre o código..."
+                value={busqueda}
+                onChange={handleBusquedaChange}
+                style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }}
+                onFocus={e => { e.target.style.borderColor = '#d10a11'; e.target.style.boxShadow = '0 0 0 3px rgba(209,10,17,0.12)'; e.target.style.background = '#fff'; }}
+                onBlur={e => { e.target.style.borderColor = '#e0e0e0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#fafafa'; }}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px', paddingBottom: '2px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '600', color: '#666', marginLeft: '4px', visibility: 'hidden' }}>Estado</label>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', height: '40px' }}>
+                {[
+                  { id: 'Todos', label: 'Todos' },
+                  { id: 'Activo', label: 'Activos' },
+                  { id: 'Inactivo', label: 'Inactivos' }
+                ].map(tab => {
+                  const isActive = filtroEstado === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => { setFiltroEstado(tab.id); setPaginaActual(1); }}
+                      style={{
+                        padding: '7px 16px', border: '1.5px solid #e0e0e0',
+                        background: isActive ? '#d10a11' : '#fff',
+                        color: isActive ? '#fff' : '#666',
+                        borderColor: isActive ? '#d10a11' : '#e0e0e0',
+                        borderRadius: '20px', cursor: 'pointer',
+                        fontSize: '13px', fontWeight: '600',
+                        boxShadow: isActive ? '0 2px 8px rgba(209,10,17,0.25)' : 'none',
+                        transition: 'all 0.2s ease', height: '36px'
+                      }}
+                      onMouseEnter={e => {
+                        if (!isActive) { e.currentTarget.style.borderColor = '#d10a11'; e.currentTarget.style.color = '#d10a11'; e.currentTarget.style.background = 'rgba(209,10,17,0.04)'; }
+                      }}
+                      onMouseLeave={e => {
+                        if (!isActive) { e.currentTarget.style.borderColor = '#e0e0e0'; e.currentTarget.style.color = '#666'; e.currentTarget.style.background = '#fff'; }
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'flex-end', paddingBottom: '10px' }}>
+              <span style={{ color: '#666', fontSize: '13px', fontWeight: '500' }}>
+                {productosFiltrados.length} producto{productosFiltrados.length !== 1 ? 's' : ''} encontrado{productosFiltrados.length !== 1 ? 's' : ''}
+              </span>
+            </div>
           </div>
 
           {/* Tabla */}
@@ -130,7 +162,7 @@ export default function ReporteStockPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f5f5f5' }}>
-                  {['Código', 'Nombre', 'Descripción', 'Stock', 'Costo', 'P.V.P', 'IVA', 'Estado', 'Valor Inv.'].map(h => (
+                  {['Código', 'Nombre', 'Stock', 'Costo', 'P.V.P', 'IVA', 'Estado', 'Valor Inv.'].map(h => (
                     <th key={h} style={{
                       padding: '11px 14px', textAlign: 'left',
                       color: '#666', fontWeight: '700',
@@ -146,8 +178,8 @@ export default function ReporteStockPage() {
               <tbody>
                 {productosFiltrados.length === 0 ? (
                   <tr>
-                    <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: '#999', fontStyle: 'italic' }}>
-                      📦 No se encontraron productos con ese criterio
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: '#999', fontStyle: 'italic' }}>
+                      <Inbox size={48} style={{ display: 'block', margin: '0 auto 10px', color: '#ccc' }} /> No se encontraron productos con ese criterio
                     </td>
                   </tr>
                 ) : (
@@ -155,31 +187,40 @@ export default function ReporteStockPage() {
                     const sinStock  = Number(p.stock_actual) === 0;
                     const stockBajo = Number(p.stock_actual) > 0 && Number(p.stock_actual) < 5;
                     return (
-                      <tr key={p.codigo} style={{
-                        borderBottom: '1px solid #f0f0f0',
-                        background: sinStock ? 'rgba(209,10,17,0.04)' : i % 2 === 0 ? '#fff' : '#fafafa',
-                        opacity: p.estado === 'Inactivo' ? 0.6 : 1,
-                        transition: 'background 0.15s'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(209,10,17,0.03)'}
-                      onMouseLeave={e => e.currentTarget.style.background = sinStock ? 'rgba(209,10,17,0.04)' : i % 2 === 0 ? '#fff' : '#fafafa'}
-                      >
-                        <td style={{ padding: '11px 14px', color: '#d10a11', fontFamily: 'monospace', fontWeight: '700', fontSize: '13px' }}>{p.codigo}</td>
-                        <td style={{ padding: '11px 14px', fontWeight: '600', color: '#1a1a1a', fontSize: '13px' }}>{p.nombre}</td>
-                        <td style={{ padding: '11px 14px', color: '#666', fontSize: '12px', maxWidth: '160px' }}>{p.descripcion || '—'}</td>
+                      <Fragment key={p.codigo}>
+                        <tr style={{
+                          borderBottom: '1px solid #f0f0f0',
+                          background: p.estado === 'Inactivo' ? 'rgba(0,0,0,0.04)' : (sinStock ? 'rgba(209,10,17,0.04)' : i % 2 === 0 ? '#fff' : '#fafafa'),
+                          opacity: p.estado === 'Inactivo' ? 0.6 : 1,
+                          filter: p.estado === 'Inactivo' ? 'grayscale(100%)' : 'none',
+                          transition: 'background 0.15s'
+                        }}
+                        onMouseEnter={e => { if (p.estado !== 'Inactivo') e.currentTarget.style.background = 'rgba(209,10,17,0.03)' }}
+                        onMouseLeave={e => { if (p.estado !== 'Inactivo') e.currentTarget.style.background = sinStock ? 'rgba(209,10,17,0.04)' : i % 2 === 0 ? '#fff' : '#fafafa' }}
+                        >
+                          <td style={{ padding: '11px 14px' }}>
+                            <span 
+                              style={{ color: '#d10a11', fontWeight: '700', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline' }}
+                              onClick={() => toggleRow(p.codigo)}
+                              title="Ver Descripción"
+                            >
+                              {p.codigo}
+                            </span>
+                          </td>
+                          <td style={{ padding: '11px 14px', fontWeight: '600', color: '#1a1a1a', fontSize: '13px' }}>{p.nombre}</td>
                         <td style={{ padding: '11px 14px' }}>
                           <span style={{ fontWeight: '800', fontSize: '15px', color: sinStock ? '#a80008' : stockBajo ? '#b45309' : '#1a7a1a' }}>
                             {p.stock_actual}
                           </span>
-                          {sinStock  && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#a80008', background: 'rgba(209,10,17,0.1)', padding: '1px 6px', borderRadius: '10px', fontWeight: '700' }}>SIN STOCK</span>}
-                          {stockBajo && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#b45309', background: 'rgba(180,83,9,0.1)', padding: '1px 6px', borderRadius: '10px', fontWeight: '700' }}>BAJO</span>}
+                          {sinStock  && <span style={{ marginLeft: '8px', fontSize: '10px', color: '#fff', background: '#d10a11', padding: '3px 8px', borderRadius: '12px', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '3px', boxShadow: '0 2px 4px rgba(209,10,17,0.3)', verticalAlign: 'middle' }}><AlertTriangle size={11} strokeWidth={3} /> SIN STOCK</span>}
+                          {stockBajo && <span style={{ marginLeft: '8px', fontSize: '10px', color: '#fff', background: '#b45309', padding: '3px 8px', borderRadius: '12px', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '3px', boxShadow: '0 2px 4px rgba(180,83,9,0.3)', verticalAlign: 'middle' }}><TrendingDown size={11} strokeWidth={3} /> STOCK BAJO</span>}
                         </td>
                         <td style={{ padding: '11px 14px', color: '#1a1a1a', fontSize: '13px' }}>${Number(p.costo).toFixed(2)}</td>
                         <td style={{ padding: '11px 14px', color: '#1a1a1a', fontSize: '13px' }}>${Number(p.pvp).toFixed(2)}</td>
                         <td style={{ padding: '11px 14px' }}>
                           {p.graba_iva
-                            ? <span style={{ color: '#1a7a1a', fontWeight: '700', fontSize: '12px' }}>✓ Sí</span>
-                            : <span style={{ color: '#999', fontSize: '12px' }}>No</span>
+                            ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#1a7a1a', fontWeight: '700', fontSize: '12px' }}><Check size={14} /> Sí</span>
+                            : <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#999', fontSize: '12px', fontWeight: '600' }}><X size={14} /> No</span>
                           }
                         </td>
                         <td style={{ padding: '11px 14px' }}>
@@ -195,47 +236,90 @@ export default function ReporteStockPage() {
                           ${Number(p.valor_inventario).toFixed(2)}
                         </td>
                       </tr>
-                    );
-                  })
+                      {expandedRow === p.codigo && (
+                        <tr>
+                          <td colSpan={8} style={{ padding: '16px 20px', backgroundColor: 'rgba(209,10,17,0.02)', borderBottom: '1px solid #f0f0f0', borderLeft: '3px solid #d10a11', animation: 'fadeIn 0.2s ease both' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <span style={{ fontSize: '11px', fontWeight: '700', color: '#d10a11', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Descripción Detallada</span>
+                              <span style={{ fontSize: '13px', color: '#444', lineHeight: 1.5 }}>
+                                {p.descripcion || <em style={{ color: '#999' }}>Este producto no tiene una descripción registrada.</em>}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })
                 )}
               </tbody>
             </table>
           </div>
 
           {/* Paginación */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', flexWrap: 'wrap', gap: '10px' }}>
-            <span style={{ color: '#666', fontSize: '13px', fontWeight: '500' }}>
-              Mostrando {productosFiltrados.length === 0 ? 0 : indiceInicio + 1}–{Math.min(paginaActual * FILAS_POR_PAGINA, productosFiltrados.length)} de {productosFiltrados.length}
-            </span>
+          {productosFiltrados.length > 0 && (
+            <div className="pagination-container" style={{ marginTop: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Mostrar</span>
+                    <select
+                        value={itemsPorPagina}
+                        onChange={(e) => { setItemsPorPagina(Number(e.target.value)); setPaginaActual(1); }}
+                        className="modern-select"
+                        style={{ padding: '4px 8px', width: 'auto' }}
+                    >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                    </select>
+                    <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>registros</span>
+                </div>
 
-            {totalPaginas > 1 && (
-              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-                <button
-                  onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
-                  disabled={paginaActual === 1}
-                  style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid #e0e0e0', background: '#fff', color: paginaActual === 1 ? '#ccc' : '#d10a11', cursor: paginaActual === 1 ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: '600', transition: 'all 0.2s' }}
-                >
-                  ‹ Ant
-                </button>
-                {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(num => (
-                  <button
-                    key={num}
-                    onClick={() => setPaginaActual(num)}
-                    style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid', borderColor: paginaActual === num ? '#d10a11' : '#e0e0e0', background: paginaActual === num ? '#d10a11' : '#fff', color: paginaActual === num ? '#fff' : '#666', fontWeight: paginaActual === num ? '700' : '500', cursor: 'pointer', fontSize: '13px', minWidth: '36px', transition: 'all 0.2s' }}
-                  >
-                    {num}
-                  </button>
-                ))}
-                <button
-                  onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
-                  disabled={paginaActual === totalPaginas}
-                  style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid #e0e0e0', background: '#fff', color: paginaActual === totalPaginas ? '#ccc' : '#d10a11', cursor: paginaActual === totalPaginas ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: '600', transition: 'all 0.2s' }}
-                >
-                  Sig ›
-                </button>
-              </div>
-            )}
-          </div>
+                <div className="pagination-controls">
+                    <button
+                        className="pagination-button"
+                        onClick={() => setPaginaActual(1)}
+                        disabled={paginaActual === 1}
+                    >
+                        «
+                    </button>
+                    <button
+                        className="pagination-button"
+                        onClick={() => setPaginaActual(p => Math.max(p - 1, 1))}
+                        disabled={paginaActual === 1}
+                    >
+                        Anterior
+                    </button>
+                    {Array.from({ length: totalPaginas }, (_, idx) => idx + 1).map(page => (
+                        <button
+                            key={page}
+                            className={`pagination-button ${paginaActual === page ? 'active' : ''}`}
+                            onClick={() => setPaginaActual(page)}
+                        >
+                            {page}
+                        </button>
+                    ))}
+                    <button
+                        className="pagination-button"
+                        onClick={() => setPaginaActual(p => Math.min(p + 1, totalPaginas))}
+                        disabled={paginaActual === totalPaginas}
+                    >
+                        Siguiente
+                    </button>
+                    <button
+                        className="pagination-button"
+                        onClick={() => setPaginaActual(totalPaginas)}
+                        disabled={paginaActual === totalPaginas}
+                    >
+                        »
+                    </button>
+                </div>
+
+                <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                    Mostrando {indiceInicio + 1} a {Math.min(indiceInicio + itemsPorPagina, productosFiltrados.length)} de {productosFiltrados.length} registros
+                </span>
+            </div>
+          )}
         </>
       )}
     </div>

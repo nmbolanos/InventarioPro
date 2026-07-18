@@ -1,4 +1,4 @@
-# InventarioPro
+# Módulo Inventario UTN
 Sistema de gestión de inventario desarrollado por el grupo.
 
 ## Dockerización
