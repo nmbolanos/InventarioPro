@@ -2,9 +2,11 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css';
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import './index.css'
 import App from './App.jsx'
 import axios from 'axios'
+
+// Configuración global de Axios
+axios.defaults.headers.common['x-api-key'] = 'utn-compras-fact-2026-secret-key';
 
 // 1. Interceptor global para Axios (usado por ProductoService y AjusteService)
 axios.interceptors.request.use(
@@ -26,19 +28,27 @@ window.fetch = async (...args) => {
   let [resource, config] = args;
   const token = localStorage.getItem('token');
 
+  config = config || {};
+  config.headers = config.headers || {};
+
+  const injectHeader = (name, value) => {
+    if (config.headers instanceof Headers) {
+      config.headers.set(name, value);
+    } else if (Array.isArray(config.headers)) {
+      config.headers.push([name, value]);
+    } else {
+      config.headers[name] = value;
+    }
+  };
+
+  // Inyectar API Key en todas las peticiones
+  injectHeader('x-api-key', 'utn-compras-fact-2026-secret-key');
+
   // Solo inyectamos el token si existe y no es una petición externa (como compras)
   if (token && typeof resource === 'string' && !resource.includes('/api/compras')) {
-    config = config || {};
-    config.headers = config.headers || {};
-
-    if (config.headers instanceof Headers) {
-      config.headers.set('Authorization', `Bearer ${token}`);
-    } else if (Array.isArray(config.headers)) {
-      config.headers.push(['Authorization', `Bearer ${token}`]);
-    } else {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
+    injectHeader('Authorization', `Bearer ${token}`);
   }
+  
   return originalFetch(resource, config);
 };
 
