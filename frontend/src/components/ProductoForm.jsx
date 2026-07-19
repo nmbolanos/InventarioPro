@@ -48,6 +48,7 @@ const ProductoForm = ({ producto, onSave, onCancel }) => {
         const newErrors = {};
         if (producto && !formData.codigo.trim()) newErrors.codigo = 'El código es requerido.';
         if (!formData.nombre.trim()) newErrors.nombre = 'El nombre es requerido.';
+        if (!formData.descripcion.trim()) newErrors.descripcion = 'La descripción es requerida.';
         if (formData.costo === '' || formData.costo === null || isNaN(formData.costo) || Number(formData.costo) < 0) {
             newErrors.costo = 'Costo válido requerido.';
         }
@@ -109,13 +110,15 @@ const ProductoForm = ({ producto, onSave, onCancel }) => {
                 </div>
 
                 <div className="form-group">
-                    <label>Descripción</label>
+                    <label>Descripción <span style={{color: '#d10a11'}}>*</span></label>
                     <textarea 
                         name="descripcion" 
                         value={formData.descripcion} 
                         onChange={handleChange}
+                        className={erroresLocales.descripcion ? 'input-error' : ''}
                         rows="3"
                     ></textarea>
+                    {erroresLocales.descripcion && <span className="error-text">{erroresLocales.descripcion}</span>}
                 </div>
 
                 <div className="form-row">

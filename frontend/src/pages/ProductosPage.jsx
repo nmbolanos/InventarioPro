@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { getProductos, desactivarProducto } from '../services/productoService';
 import { getCatalogoProveedores } from '../services/comprasService';
 import ProductoList from '../components/ProductoList';
@@ -8,12 +8,21 @@ import './ProductosPage.css';
 
 const ProductosPage = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [productos, setProductos] = useState([]);
     const [proveedoresCatalogo, setProveedoresCatalogo] = useState([]);
     const [mensaje, setMensaje] = useState({ texto: '', tipo: '' }); // tipo: 'exito' | 'error'
     const [productoADesactivar, setProductoADesactivar] = useState(null); // Estado para el modal
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('Todos'); // 'Todos', 'Activo', 'Inactivo'
+
+    useEffect(() => {
+        if (location.state?.mensaje) {
+            mostrarMensaje(location.state.mensaje, location.state.tipo || 'exito');
+            // Clean state so it doesn't reappear on refresh
+            window.history.replaceState({}, document.title);
+        }
+    }, [location]);
 
     // Pagination State
     const [paginaActual, setPaginaActual] = useState(1);

@@ -36,11 +36,13 @@ const ProductoList = ({ productos, proveedoresCatalogo = [], onEdit, onDesactiva
             <table className="modern-table">
                 <thead>
                     <tr>
-                        <th style={{ width: '70px', textAlign: 'center' }}>Acciones</th>
+                        <th style={{ width: '85px', textAlign: 'center' }}>Acciones</th>
                         <th onClick={() => onSort('codigo')} style={{ cursor: 'pointer', userSelect: 'none' }}>
                             Código {renderSortIcon('codigo')}
                         </th>
-                        <th>Nombre</th>
+                        <th onClick={() => onSort('nombre')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            Nombre {renderSortIcon('nombre')}
+                        </th>
                         <th onClick={() => onSort('stock_actual')} style={{ cursor: 'pointer', userSelect: 'none' }}>
                             Stock {renderSortIcon('stock_actual')}
                         </th>
@@ -50,7 +52,9 @@ const ProductoList = ({ productos, proveedoresCatalogo = [], onEdit, onDesactiva
                         <th onClick={() => onSort('pvp')} style={{ cursor: 'pointer', userSelect: 'none' }}>
                             P.V.P {renderSortIcon('pvp')}
                         </th>
-                        <th>IVA</th>
+                        <th onClick={() => onSort('graba_iva')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            IVA {renderSortIcon('graba_iva')}
+                        </th>
                         <th>Estado</th>
                     </tr>
                 </thead>
@@ -58,14 +62,14 @@ const ProductoList = ({ productos, proveedoresCatalogo = [], onEdit, onDesactiva
                     {productos.map(producto => (
                         <React.Fragment key={producto.codigo}>
                             <tr className={producto.estado === 'Inactivo' ? 'row-inactive' : ''}>
-                                <td style={{ width: '40px', textAlign: 'center', paddingRight: '0' }}>
+                                <td style={{ width: '85px', textAlign: 'center', paddingRight: '0' }}>
                                     <button 
                                         className="btn btn-icon btn-edit" 
                                         onClick={() => onEdit(producto)} 
                                         title="Editar"
-                                        style={{ padding: '4px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', color: '#1a1a1a', background: 'transparent', border: 'none' }}
+                                        style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', margin: '0 auto', color: '#1a1a1a', background: 'transparent', border: 'none', fontSize: '13px', fontWeight: '500' }}
                                     >
-                                        <Edit size={14} />
+                                        <Edit size={14} /> Editar
                                     </button>
                                 </td>
                                 <td>

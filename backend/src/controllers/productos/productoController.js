@@ -41,6 +41,20 @@ const createProducto = async (req, res) => {
             }
         }
 
+        if (validation.data.nombre) {
+            const existingName = await prisma.producto.findFirst({
+                where: {
+                    nombre: {
+                        equals: validation.data.nombre,
+                        mode: 'insensitive'
+                    }
+                }
+            });
+            if (existingName) {
+                return res.status(409).json({ success: false, message: `El producto con nombre "${validation.data.nombre}" ya existe en el inventario.` });
+            }
+        }
+
         const nuevoProducto = await prisma.producto.create({
             data: validation.data
         });
@@ -62,6 +76,23 @@ const updateProducto = async (req, res) => {
             const existing = await prisma.producto.findUnique({ where: { codigo: validation.data.codigo } });
             if (existing) {
                 return res.status(409).json({ success: false, message: 'El nuevo código de producto ya existe.' });
+            }
+        }
+
+        if (validation.data.nombre) {
+            const existingName = await prisma.producto.findFirst({
+                where: {
+                    nombre: {
+                        equals: validation.data.nombre,
+                        mode: 'insensitive'
+                    },
+                    codigo: {
+                        not: codigo
+                    }
+                }
+            });
+            if (existingName) {
+                return res.status(409).json({ success: false, message: `El producto con nombre "${validation.data.nombre}" ya existe en el inventario.` });
             }
         }
 

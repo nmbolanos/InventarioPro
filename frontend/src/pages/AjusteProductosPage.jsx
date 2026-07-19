@@ -27,7 +27,12 @@ const AjusteProductosPage = () => {
     const [paginaActual, setPaginaActual] = useState(1);
     const [itemsPorPagina, setItemsPorPagina] = useState(10);
 
+    // Sort State
+    const [sortByHistorial, setSortByHistorial] = useState('fecha');
+    const [sortOrderHistorial, setSortOrderHistorial] = useState('DESC');
+
     // Filter States
+    const [busquedaHistorial, setBusquedaHistorial] = useState('');
     const [fechaDesde, setFechaDesde] = useState('');
     const [fechaHasta, setFechaHasta] = useState('');
     const [filtroEstado, setFiltroEstado] = useState('Todos'); // 'Todos' | 'Borradores' | 'Impresos'
@@ -548,6 +553,15 @@ const AjusteProductosPage = () => {
 
     // Filter history list by date range and status
     const historialFiltrado = historialAjustes.filter(item => {
+        if (busquedaHistorial.trim() !== '') {
+            const query = busquedaHistorial.toLowerCase();
+            const numAjuste = (item.numero_ajuste || '').toLowerCase();
+            const desc = (item.descripcion || '').toLowerCase();
+            if (!numAjuste.includes(query) && !desc.includes(query)) {
+                return false;
+            }
+        }
+
         if (fechaDesde || fechaHasta) {
             if (!item.fecha) return false;
             const fechaItem = new Date(item.fecha).toISOString().substring(0, 10);
@@ -561,12 +575,47 @@ const AjusteProductosPage = () => {
         return true;
     });
 
+    const handleSortHistorial = (column) => {
+        if (sortByHistorial === column) {
+            setSortOrderHistorial(sortOrderHistorial === 'ASC' ? 'DESC' : 'ASC');
+        } else {
+            setSortByHistorial(column);
+            setSortOrderHistorial('ASC');
+        }
+        setPaginaActual(1);
+    };
+
+    const renderSortIconHistorial = (column) => {
+        if (sortByHistorial !== column) return <span style={{ color: 'var(--text-secondary)', marginLeft: '4px', opacity: 0.3 }}>↕</span>;
+        return <span style={{ color: 'var(--primary-color)', marginLeft: '4px' }}>{sortOrderHistorial === 'ASC' ? '↑' : '↓'}</span>;
+    };
+
+    const historialOrdenado = [...historialFiltrado].sort((a, b) => {
+        let valA = a[sortByHistorial];
+        let valB = b[sortByHistorial];
+
+        if (sortByHistorial === 'fecha') {
+            valA = valA ? new Date(valA).getTime() : 0;
+            valB = valB ? new Date(valB).getTime() : 0;
+        } else if (sortByHistorial === 'estado') {
+            valA = a.impreso ? 1 : 0;
+            valB = b.impreso ? 1 : 0;
+        } else {
+            valA = String(valA || '').toLowerCase();
+            valB = String(valB || '').toLowerCase();
+        }
+
+        if (valA < valB) return sortOrderHistorial === 'ASC' ? -1 : 1;
+        if (valA > valB) return sortOrderHistorial === 'ASC' ? 1 : -1;
+        return 0;
+    });
+
     // Pagination calculation
-    const totalItems = historialFiltrado.length;
+    const totalItems = historialOrdenado.length;
     const totalPaginas = Math.ceil(totalItems / itemsPorPagina) || 1;
-    const paginaSegura = Math.min(paginaActual, totalPaginas);
+    const paginaSegura = Math.min(paginaActual, totalPaginas) || 1;
     const indiceInicio = (paginaSegura - 1) * itemsPorPagina;
-    const historialPaginado = historialFiltrado.slice(indiceInicio, indiceInicio + itemsPorPagina);
+    const historialPaginado = historialOrdenado.slice(indiceInicio, indiceInicio + itemsPorPagina);
 
     const totalCantidadItems = detalles.reduce((sum, item) => sum + Math.abs(item.cantidad), 0);
     const totalSubtotal = detalles.reduce((sum, item) => sum + item.subtotal, 0);
@@ -794,6 +843,15 @@ const AjusteProductosPage = () => {
 
                     {/* FILTROS DE HISTORIAL */}
                     <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: '20px', width: '100%' }}>
+                        <div className="search-box" style={{ flex: '1', minWidth: '220px', margin: 0 }}>
+                            <input 
+                                type="text" 
+                                placeholder="Buscar número o descripción..." 
+                                value={busquedaHistorial}
+                                onChange={(e) => { setBusquedaHistorial(e.target.value); setPaginaActual(1); }}
+                                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #e0e0e0', fontSize: '14px', background: '#fafafa' }}
+                            />
+                        </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <label style={{ fontSize: '12px', fontWeight: '600', color: '#666', marginLeft: '4px' }}>Desde</label>
                             <input
@@ -842,12 +900,13 @@ const AjusteProductosPage = () => {
                         <button
                             className="btn btn-secondary"
                             onClick={() => {
+                                setBusquedaHistorial('');
                                 setFechaDesde('');
                                 setFechaHasta('');
                                 setFiltroEstado('Todos');
                                 setPaginaActual(1);
                             }}
-                            disabled={!fechaDesde && !fechaHasta && filtroEstado === 'Todos'}
+                            disabled={!busquedaHistorial && !fechaDesde && !fechaHasta && filtroEstado === 'Todos'}
                             style={{ height: '38px', padding: '0 20px', flex: '0 0 auto' }}
                         >
                             Limpiar Filtros
@@ -858,9 +917,13 @@ const AjusteProductosPage = () => {
                         <table className="modern-table">
                             <thead>
                                 <tr>
-                                    <th style={{ width: '80px', textAlign: 'center' }}>Acciones</th>
-                                    <th>Número</th>
-                                    <th>Fecha</th>
+                                    <th style={{ width: '220px', textAlign: 'center' }}>Acciones</th>
+                                    <th onClick={() => handleSortHistorial('numero_ajuste')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                                        Número {renderSortIconHistorial('numero_ajuste')}
+                                    </th>
+                                    <th onClick={() => handleSortHistorial('fecha')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                                        Fecha {renderSortIconHistorial('fecha')}
+                                    </th>
                                     <th>Descripción</th>
                                     <th>Estado</th>
                                 </tr>
@@ -875,23 +938,23 @@ const AjusteProductosPage = () => {
                                 ) : (
                                     historialPaginado.map((item) => (
                                         <tr key={item.numero_ajuste}>
-                                            <td style={{ textAlign: 'center' }}>
+                                            <td style={{ textAlign: 'center', width: '220px' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
                                                     {!item.impreso && (
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleEditarAjuste(item.numero_ajuste); }}
                                                             title="Editar Ajuste (Borrador)"
-                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--primary-color)', display: 'flex' }}
+                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: '500', whiteSpace: 'nowrap' }}
                                                         >
-                                                            <Edit size={16} strokeWidth={2.5} />
+                                                            <Edit size={16} strokeWidth={2.5} /> Editar
                                                         </button>
                                                     )}
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleImprimirDesdeLista(item.numero_ajuste); }}
                                                         title="Imprimir Ajuste"
-                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#1a7a1a', display: 'flex' }}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#1a7a1a', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: '500', whiteSpace: 'nowrap' }}
                                                     >
-                                                        <Printer size={16} strokeWidth={2.5} />
+                                                        <Printer size={16} strokeWidth={2.5} /> Imprimir PDF
                                                     </button>
                                                 </div>
                                             </td>

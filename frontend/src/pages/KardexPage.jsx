@@ -27,6 +27,25 @@ export default function KardexPage() {
   const [paginaActual, setPaginaActual] = useState(1);
   const [itemsPorPagina, setItemsPorPagina] = useState(10);
 
+  // Ordenamiento y Filtrado de Movimientos
+  const [busquedaMov, setBusquedaMov] = useState('');
+  const [sortField, setSortField] = useState('');
+  const [sortOrder, setSortOrder] = useState('ASC');
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC');
+    } else {
+      setSortField(field);
+      setSortOrder('ASC');
+    }
+  };
+
+  const renderSortIcon = (field) => {
+    if (sortField !== field) return <span style={{ opacity: 0.3, marginLeft: '4px' }}>↕</span>;
+    return <span style={{ marginLeft: '4px', color: '#d10a11' }}>{sortOrder === 'ASC' ? '↑' : '↓'}</span>;
+  };
+
   useEffect(() => {
     getProductos()
       .then(setProductos)
@@ -244,7 +263,52 @@ export default function KardexPage() {
       {kardex && !loading && (
         <div style={{ animation: 'fadeIn 0.35s ease both' }}>
           {(() => {
-            const movimientosList = kardex.movimientos || [];
+            let movimientosList = [...(kardex.movimientos || [])];
+
+            // Filtrar
+            if (busquedaMov.trim()) {
+              const query = busquedaMov.toLowerCase();
+              movimientosList = movimientosList.filter(m => 
+                (m.tipo_movimiento || '').toLowerCase().includes(query) ||
+                (m.documento_referencia || '').toLowerCase().includes(query) ||
+                (m.descripcion || '').toLowerCase().includes(query)
+              );
+            }
+
+            // Ordenar
+            if (sortField) {
+              movimientosList.sort((a, b) => {
+                let valA, valB;
+                switch (sortField) {
+                  case 'fecha':
+                    valA = new Date(a.fecha || 0).getTime();
+                    valB = new Date(b.fecha || 0).getTime();
+                    break;
+                  case 'cantidad':
+                    valA = Number(a.cantidad || 0);
+                    valB = Number(b.cantidad || 0);
+                    break;
+                  case 'costo_unitario':
+                    valA = Number(a.costo_unitario || 0);
+                    valB = Number(b.costo_unitario || 0);
+                    break;
+                  case 'valor_total':
+                    valA = Number(a.valor_total || 0);
+                    valB = Number(b.valor_total || 0);
+                    break;
+                  case 'stock_resultante':
+                    valA = Number(a.stock_resultante || 0);
+                    valB = Number(b.stock_resultante || 0);
+                    break;
+                  default:
+                    valA = 0; valB = 0;
+                }
+                if (valA < valB) return sortOrder === 'ASC' ? -1 : 1;
+                if (valA > valB) return sortOrder === 'ASC' ? 1 : -1;
+                return 0;
+              });
+            }
+
             const totalPaginas = Math.max(1, Math.ceil(movimientosList.length / itemsPorPagina));
             const indiceInicio = (paginaActual - 1) * itemsPorPagina;
             const movimientosPaginados = movimientosList.slice(indiceInicio, indiceInicio + itemsPorPagina);
@@ -311,22 +375,34 @@ export default function KardexPage() {
             )}
           </div>
 
+          {/* Opciones de tabla (Búsqueda) */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', marginTop: '25px', padding: '0 5px', flexWrap: 'wrap', gap: '15px' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', color: '#1a1a1a', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Detalle de Movimientos</h3>
+            <div style={{ width: '350px', position: 'relative' }}>
+              <Search size={16} color="#999" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+              <input 
+                type="text"
+                placeholder="Buscar tipo, documento o descripción..."
+                value={busquedaMov}
+                onChange={(e) => { setBusquedaMov(e.target.value); setPaginaActual(1); }}
+                style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: '8px', border: '1.5px solid #e0e0e0', fontSize: '13px', background: '#fff', boxSizing: 'border-box' }}
+              />
+            </div>
+          </div>
+
           {/* Tabla de movimientos */}
           <div style={{ overflowX: 'auto', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.07)', border: '1px solid #e0e0e0' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f5f5f5' }}>
-                  {['Fecha', 'Tipo', 'Documento', 'Descripción', 'Cantidad', 'Costo Unit.', 'Valor Total', 'Stock'].map(h => (
-                    <th key={h} style={{
-                      padding: '11px 14px', textAlign: 'left',
-                      color: '#666', fontWeight: '700',
-                      fontSize: '11px', whiteSpace: 'nowrap',
-                      textTransform: 'uppercase', letterSpacing: '0.05em',
-                      borderBottom: '2px solid #d10a11'
-                    }}>
-                      {h}
-                    </th>
-                  ))}
+                  <th onClick={() => handleSort('fecha')} style={{ cursor: 'pointer', userSelect: 'none', padding: '11px 14px', textAlign: 'left', color: '#666', fontWeight: '700', fontSize: '11px', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #d10a11' }}>Fecha {renderSortIcon('fecha')}</th>
+                  <th style={{ padding: '11px 14px', textAlign: 'left', color: '#666', fontWeight: '700', fontSize: '11px', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #d10a11' }}>Tipo</th>
+                  <th style={{ padding: '11px 14px', textAlign: 'left', color: '#666', fontWeight: '700', fontSize: '11px', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #d10a11' }}>Documento</th>
+                  <th style={{ padding: '11px 14px', textAlign: 'left', color: '#666', fontWeight: '700', fontSize: '11px', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #d10a11' }}>Descripción</th>
+                  <th onClick={() => handleSort('cantidad')} style={{ cursor: 'pointer', userSelect: 'none', padding: '11px 14px', textAlign: 'left', color: '#666', fontWeight: '700', fontSize: '11px', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #d10a11' }}>Cantidad {renderSortIcon('cantidad')}</th>
+                  <th onClick={() => handleSort('costo_unitario')} style={{ cursor: 'pointer', userSelect: 'none', padding: '11px 14px', textAlign: 'left', color: '#666', fontWeight: '700', fontSize: '11px', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #d10a11' }}>Costo Unit. {renderSortIcon('costo_unitario')}</th>
+                  <th onClick={() => handleSort('valor_total')} style={{ cursor: 'pointer', userSelect: 'none', padding: '11px 14px', textAlign: 'left', color: '#666', fontWeight: '700', fontSize: '11px', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #d10a11' }}>Valor Total {renderSortIcon('valor_total')}</th>
+                  <th onClick={() => handleSort('stock_resultante')} style={{ cursor: 'pointer', userSelect: 'none', padding: '11px 14px', textAlign: 'left', color: '#666', fontWeight: '700', fontSize: '11px', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #d10a11' }}>Stock {renderSortIcon('stock_resultante')}</th>
                 </tr>
               </thead>
               <tbody>

@@ -38,12 +38,12 @@ const ProductoFormPage = () => {
             if (codigo) {
                 // Actualizar
                 await updateProducto(codigo, productoData);
+                navigate('/productos', { state: { mensaje: 'Producto editado exitosamente', tipo: 'exito' } });
             } else {
                 // Crear
                 await createProducto(productoData);
+                navigate('/productos', { state: { mensaje: 'Producto creado exitosamente', tipo: 'exito' } });
             }
-            // Volver a la lista de productos
-            navigate('/productos');
         } catch (error) {
             const errorMsg = error.response?.data?.message || 'Error al guardar el producto';
             setMensajeError(errorMsg);
