@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 
-const GRAPHQL_URL = 'https://proyecto-moduloseguridad.onrender.com/graphql/';
+const GRAPHQL_URL = 'http://moduloseguridadgrupo3-env.eba-mpaczmew.us-east-1.elasticbeanstalk.com/graphql/';
 
 /**
  * @swagger

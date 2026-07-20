@@ -8,6 +8,7 @@ const productoRoutes = require("./routes/productoRoutes");
 const ajusteCabeceraRoutes = require("./routes/ajusteCabecera");
 const ajusteDetalleRoutes = require("./routes/ajusteDetalle");
 const dashboardRoutes = require('./routes/dashboard');
+const comprasRoutes = require('./routes/comprasRoutes');
 
 const authRoutes = require("./routes/auth");
 const auditMiddleware = require("./middleware/auditoria");
@@ -30,6 +31,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/productos", productoRoutes);
 app.use("/api/ajustes/cabecera", ajusteCabeceraRoutes);
 app.use("/api/ajustes/detalle", ajusteDetalleRoutes);
+app.use("/api/compras", comprasRoutes);
 app.use("/api", reportesRoutes);
 
 // Ruta principal
