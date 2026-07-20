@@ -967,7 +967,7 @@ const AjusteProductosPage = () => {
                                                     {item.numero_ajuste}
                                                 </span>
                                             </td>
-                                            <td>{new Date(item.fecha).toLocaleDateString('es-EC')}</td>
+                                            <td>{new Date(item.fecha).toLocaleDateString('es-EC', { timeZone: 'UTC' })}</td>
                                             <td>{item.descripcion}</td>
                                             <td>
                                                 <span className={`badge ${item.impreso ? 'badge-active' : 'badge-inactive'}`} style={{ backgroundColor: item.impreso ? '#d4edda' : '#fff3cd', color: item.impreso ? '#155724' : '#856404' }}>
@@ -1194,7 +1194,7 @@ const AjusteProductosPage = () => {
                             </div>
                         </div>
                         <div style={{ marginBottom: '15px' }}>
-                            <strong>Fecha:</strong> {new Date(ajusteDetallesView.fecha).toLocaleDateString('es-EC')} <br />
+                            <strong>Fecha:</strong> {new Date(ajusteDetallesView.fecha).toLocaleDateString('es-EC', { timeZone: 'UTC' })} <br />
                             <strong>Descripción:</strong> {ajusteDetallesView.descripcion} <br />
                         </div>
                         <div style={{ overflowX: 'auto' }}>
